@@ -98,10 +98,3 @@ go-gen-r <yourServiceName>
 This will generate a new module inside `/src/<yourServiceName>` with boilerplate code for handler, service, repositories, and routes.
 
 ---
-
-## 🧑‍💻 Author
-
-**BounkhongDev**  
-[GitHub](https://github.com/BounkhongDev)
-
----
