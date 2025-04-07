@@ -29,7 +29,7 @@ To add a directory to your system's PATH:
 4. Click on 'Advanced system settings'.
 5. Click on the 'Environment Variables' button.
 6. In the 'System variables' section, find the Path variable and select it.
-7. Click 'Edit', then 'New', and add the directory path (C:\go-module-generator).
+7. Click 'Edit', then 'New', and add the directory path (C:\go-generator).
 8. Click 'OK' to close all windows.
 
 # Usege
