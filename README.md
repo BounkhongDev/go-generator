@@ -39,7 +39,7 @@ To add a directory to your system's PATH:
 mkdir <yourProjectName>
 ```
 ```
-go-gen init
+go-gen-r init
 ```
 ```
 Enter Project Name: <yourProjectName>
@@ -53,5 +53,5 @@ go mod tidy
 > In your directory structure must has been "/src/"
 
 ```
-go-gen <yourServiceName>
+go-gen-r <yourServiceName>
 ```

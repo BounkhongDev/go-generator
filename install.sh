@@ -1,2 +1,2 @@
-go build -o go-gen ./cmd/generate/main.go
-mv go-gen /usr/local/bin/go-gen
+go build -o go-gen-r ./cmd/generate/main.go
+mv go-gen-r  /usr/local/bin/go-gen-r
