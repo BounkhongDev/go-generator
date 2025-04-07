@@ -10,7 +10,7 @@ git clone git@github.com:BounkhongDev/go-generator.git
 ```
 
 ```
-cd go-module-generator
+cd go-generator
 ```
 
 ### MacOs OR Linux
