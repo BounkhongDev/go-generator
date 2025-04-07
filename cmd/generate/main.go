@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/BounkhongDev/go-generator"
+	"github.com/BounkhongDev/go-generator/generators"
 )
 
 func main() {
