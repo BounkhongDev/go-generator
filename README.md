@@ -87,7 +87,7 @@ go mod tidy
 ### 🧱 Generate a New Module
 
 > **IMPORTANT**  
-> Your project must follow the directory structure and include a `/src/` folder.
+> Your project must follow the directory structure and include a `/internal/` folder.
 
 Inside your project directory:
 
