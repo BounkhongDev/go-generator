@@ -87,7 +87,7 @@ go mod tidy
 ### 🧱 Generate a New Module
 
 > **IMPORTANT**  
-> Your project must follow the directory structure and include a `/src/` folder.
+> Your project must follow the directory structure and include a `/internal/` folder.
 
 Inside your project directory:
 
@@ -95,6 +95,6 @@ Inside your project directory:
 go-gen-r <yourServiceName>
 ```
 
-This will generate a new module inside `/src/<yourServiceName>` with boilerplate code for handler, service, repositories, and routes.
+This will generate a new module inside `/internal/<yourServiceName>` with boilerplate code for handler, service, repositories, and routes.
 
 ---
