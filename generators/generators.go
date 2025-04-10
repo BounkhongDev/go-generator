@@ -34,6 +34,7 @@ func GenerateInitialStructure() {
 	CreateSrcDir()
 	CreateExampleConfig()
 	GenerateModules("example")
+	CreateMiddleware(projectName)
 }
 
 func CreateMainGo(projectName string) {
@@ -1099,5 +1100,70 @@ func createFile(path, content string) {
 		fmt.Println("Created file:", path)
 	} else {
 		fmt.Println("File already exists:", path)
+	}
+}
+
+func CreateMiddleware(projectName string) {
+	pathFolder := "middleware"
+	if _, err := os.Stat(pathFolder); os.IsNotExist(err) {
+		err := os.Mkdir(pathFolder, os.ModePerm)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	}
+
+	file := pathFolder + "/logging.go"
+	if _, err := os.Stat(file); os.IsNotExist(err) {
+		destination, err := os.Create(file)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		defer destination.Close()
+
+		fmt.Fprintf(destination, "package middleware\n\n")
+
+		fmt.Fprintf(destination, "import (\n")
+		fmt.Fprintf(destination, "\t\"%s/logs\"\n", projectName)
+		fmt.Fprintf(destination, "\t\"time\"\n")
+		fmt.Fprintf(destination, "\n")
+		fmt.Fprintf(destination, "\t\"github.com/gofiber/fiber/v2\"\n")
+		fmt.Fprintf(destination, "\t\"go.uber.org/zap\"\n")
+		fmt.Fprintf(destination, "\t\"go.uber.org/zap/zapcore\"\n")
+		fmt.Fprintf(destination, ")\n\n")
+
+		fmt.Fprintf(destination, "func LogInfo(ctx *fiber.Ctx) error {\n")
+		fmt.Fprintf(destination, "\tbeginTime := time.Now()\n")
+		fmt.Fprintf(destination, "\treqHeader := ctx.GetReqHeaders()\n")
+		fmt.Fprintf(destination, "\treqPath := ctx.OriginalURL()\n\n")
+
+		fmt.Fprintf(destination, "\tif err := ctx.Next(); err != nil {\n")
+		fmt.Fprintf(destination, "\t\treturn err\n")
+		fmt.Fprintf(destination, "\t}\n\n")
+
+		fmt.Fprintf(destination, "\tlatency := time.Since(beginTime)\n")
+		fmt.Fprintf(destination, "\tresHeader := ctx.GetRespHeaders()\n\n")
+
+		fmt.Fprintf(destination, "\tlogs.Info(\n")
+		fmt.Fprintf(destination, "\t\t\"\",\n")
+		fmt.Fprintf(destination, "\t\tctx.Context(),\n")
+		fmt.Fprintf(destination, "\t\tzapcore.Field{\n")
+		fmt.Fprintf(destination, "\t\t\tKey:    \"latency\",\n")
+		fmt.Fprintf(destination, "\t\t\tType:   zapcore.DurationType,\n")
+		fmt.Fprintf(destination, "\t\t\tString: latency.String(),\n")
+		fmt.Fprintf(destination, "\t\t},\n")
+		fmt.Fprintf(destination, "\t\tzap.Any(\"req_header\", reqHeader),\n")
+		fmt.Fprintf(destination, "\t\tzap.Any(\"req_path\", reqPath),\n")
+		fmt.Fprintf(destination, "\t\tzap.Any(\"res_header\", resHeader),\n")
+		fmt.Fprintf(destination, "\t\tzap.Any(\"requester_ip\", ctx.IP()),\n")
+		fmt.Fprintf(destination, "\t)\n\n")
+
+		fmt.Fprintf(destination, "\treturn nil\n")
+		fmt.Fprintf(destination, "}\n")
+
+		fmt.Println("Created logging.go successfully:", file)
+	} else {
+		fmt.Println("File already exists!", file)
 	}
 }
