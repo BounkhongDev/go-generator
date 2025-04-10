@@ -725,6 +725,7 @@ func GenerateModules(filename string) {
 	CreateRepositories(filename, projectName)
 	CreateServices(filename, projectName)
 	CreateControllers(filename, projectName)
+	CreateTestsStructure(filename, projectName)
 }
 
 func CreateRequests(filename string) {
@@ -1027,5 +1028,76 @@ func CreateExampleConfig() {
 	} else {
 		fmt.Println("File already exists!", file)
 		return
+	}
+}
+
+func CreateTestsStructure(filename string, projectName string) {
+	testFolder := "tests/" + filename
+
+	if err := os.MkdirAll(testFolder, os.ModePerm); err != nil {
+		fmt.Println("Error creating test directory:", err)
+		return
+	}
+
+	upper := strings.Replace(
+		cases.Title(language.Und, cases.NoLower).String(strings.ReplaceAll(filename, "_", " ")),
+		" ", "", -1,
+	)
+	lower := strings.ToLower(string(upper[0])) + upper[1:]
+
+	createFile(testFolder+"/"+filename+"_service_test.go", fmt.Sprintf(`package %s
+
+import (
+	"testing"
+	"github.com/stretchr/testify/assert"
+	"%s/internal/%s"
+	
+)
+
+func Test%sService(t *testing.T) {
+	// TODO: Write tests for %s service
+	assert.True(t, true)
+}`, filename, projectName, filename, upper, lower))
+
+	createFile(testFolder+"/"+filename+"_controller_test.go", fmt.Sprintf(`package %s
+
+import (
+	"testing"
+	"github.com/stretchr/testify/assert"
+	"github.com/gofiber/fiber/v2"
+)
+
+func Test%sController(t *testing.T) {
+	// TODO: Write tests for %s controller
+	app := fiber.New()
+	assert.NotNil(t, app)
+}`, filename, upper, lower))
+
+	createFile(testFolder+"/"+filename+"_repository_mock.go", fmt.Sprintf(`package %s
+
+import "github.com/stretchr/testify/mock"
+
+type %sRepositoryMock struct {
+	mock.Mock
+}
+
+// TODO: Add mock implementations
+`, filename, upper))
+
+	fmt.Println("Test structure created successfully at", testFolder)
+}
+
+func createFile(path, content string) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		file, err := os.Create(path)
+		if err != nil {
+			fmt.Println("Error creating file:", err)
+			return
+		}
+		defer file.Close()
+		file.WriteString(content)
+		fmt.Println("Created file:", path)
+	} else {
+		fmt.Println("File already exists:", path)
 	}
 }
