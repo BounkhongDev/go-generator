@@ -95,6 +95,6 @@ Inside your project directory:
 go-gen-r <yourServiceName>
 ```
 
-This will generate a new module inside `/src/<yourServiceName>` with boilerplate code for handler, service, repositories, and routes.
+This will generate a new module inside `/internal/<yourServiceName>` with boilerplate code for handler, service, repositories, and routes.
 
 ---
