@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"golang.org/x/text/cases"
@@ -60,6 +61,7 @@ func CreateMainGo(projectName string) {
 		fmt.Fprintf(destination, "	\"%s/database\"\n", projectName)
 		fmt.Fprintf(destination, "	\"%s/routes\"\n", projectName)
 		fmt.Fprintf(destination, "	\"%s/internal/example\"\n", projectName)
+		fmt.Fprintf(destination, "	\"%s/migrations\"\n", projectName)
 		fmt.Fprintf(destination, ")\n\n")
 
 		fmt.Fprintf(destination, "func main() {\n")
@@ -67,6 +69,11 @@ func CreateMainGo(projectName string) {
 		fmt.Fprintf(destination, "	db, err := database.PostgresConnection()\n")
 		fmt.Fprintf(destination, "	if err != nil {\n")
 		fmt.Fprintf(destination, "		log.Fatal(err)\n")
+		fmt.Fprintf(destination, "	}\n\n")
+
+		fmt.Fprintf(destination, "	// Run migrations\n")
+		fmt.Fprintf(destination, "	if err := migrations.MigrateAll(db); err != nil {\n")
+		fmt.Fprintf(destination, "		log.Fatalf(\"Migration failed: %%v\", err)\n")
 		fmt.Fprintf(destination, "	}\n\n")
 
 		fmt.Fprintf(destination, "	// Initialize example module\n")
@@ -91,7 +98,7 @@ func CreateMainGo(projectName string) {
 
 		fmt.Println("Created main.go successfully:", file)
 	} else {
-		fmt.Println("File already exists!", file)
+		fmt.Println("⚠️  File already exists:", file)
 	}
 }
 
@@ -727,6 +734,7 @@ func GenerateModules(filename string) {
 	CreateServices(filename, projectName)
 	CreateControllers(filename, projectName)
 	CreateTestsStructure(filename, projectName)
+	CreateMigrations(filename, projectName)
 }
 
 func CreateRequests(filename string) {
@@ -855,7 +863,6 @@ func CreateRepositories(filename string, projectName string) {
 		fmt.Fprintf(destination, "}\n\n")
 
 		fmt.Fprintf(destination, "func New%sRepository(db *gorm.DB) %sRepository {\n", upper, upper)
-		fmt.Fprintf(destination, "\tdb.AutoMigrate(%s{})\n", upper) // referencing the model directly
 		fmt.Fprintf(destination, "\treturn &%sRepository{db: db}\n", lower)
 		fmt.Fprintf(destination, "}\n")
 
@@ -1166,4 +1173,109 @@ func CreateMiddleware(projectName string) {
 	} else {
 		fmt.Println("File already exists!", file)
 	}
+}
+
+func CreateMigrations(filename string, projectName string) {
+	migrationDir := "migrations/"
+	filePath := migrationDir + "migrations.go"
+
+	// Ensure migrations directory exists
+	if _, err := os.Stat(migrationDir); os.IsNotExist(err) {
+		err := os.MkdirAll(migrationDir, os.ModePerm)
+		if err != nil {
+			fmt.Println("Failed to create migrations directory:", err)
+			return
+		}
+	}
+
+	// Format model name: "user_account" -> "UserAccount"
+	modelName := strings.Replace(
+		cases.Title(language.Und, cases.NoLower).String(strings.ReplaceAll(filename, "_", " ")),
+		" ", "", -1,
+	)
+
+	// Build import and model reference
+	importPath := fmt.Sprintf("%s/internal/%s", projectName, filename)
+	modelLine := fmt.Sprintf("&%s.%s{}", filename, modelName)
+
+	// Maps for uniqueness
+	imports := map[string]struct{}{"gorm.io/gorm": {}} // pre-add gorm
+	models := map[string]struct{}{}
+
+	// Parse existing file if present
+	if content, err := os.ReadFile(filePath); err == nil {
+		lines := strings.Split(string(content), "\n")
+		inImport := false
+		inMigrate := false
+
+		for _, line := range lines {
+			trim := strings.TrimSpace(line)
+
+			if trim == "import (" {
+				inImport = true
+				continue
+			}
+			if inImport {
+				if trim == ")" {
+					inImport = false
+					continue
+				}
+				trim = strings.Trim(trim, `"`)
+				if trim != "" {
+					imports[trim] = struct{}{}
+				}
+				continue
+			}
+
+			if strings.HasPrefix(trim, "func MigrateAll") {
+				inMigrate = true
+				continue
+			}
+			if inMigrate && strings.HasPrefix(trim, "&") {
+				models[strings.TrimRight(trim, ",")] = struct{}{}
+			}
+		}
+	}
+
+	// Add new entries
+	imports[importPath] = struct{}{}
+	models[modelLine] = struct{}{}
+
+	// Sort imports and models
+	importList := make([]string, 0, len(imports))
+	for imp := range imports {
+		importList = append(importList, imp)
+	}
+	sort.Strings(importList)
+
+	modelList := make([]string, 0, len(models))
+	for model := range models {
+		modelList = append(modelList, model)
+	}
+	sort.Strings(modelList)
+
+	// Build output
+	var builder strings.Builder
+	fmt.Fprintf(&builder, "package migrations\n\n")
+	fmt.Fprintf(&builder, "import (\n")
+	for _, imp := range importList {
+		fmt.Fprintf(&builder, "\t\"%s\"\n", imp)
+	}
+	fmt.Fprintf(&builder, ")\n\n")
+
+	fmt.Fprintf(&builder, "func MigrateAll(db *gorm.DB) error {\n")
+	fmt.Fprintf(&builder, "\treturn db.AutoMigrate(\n")
+	for _, model := range modelList {
+		fmt.Fprintf(&builder, "\t\t%s,\n", model)
+	}
+	fmt.Fprintf(&builder, "\t)\n")
+	fmt.Fprintf(&builder, "}\n")
+
+	// Write to file
+	if err := os.WriteFile(filePath, []byte(builder.String()), 0644); err != nil {
+		fmt.Println("Failed to write migrations.go:", err)
+		return
+	}
+
+	fmt.Println("migrations/migrations.go updated with model:", modelLine)
 }
