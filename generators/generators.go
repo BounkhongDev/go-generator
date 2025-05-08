@@ -23,6 +23,7 @@ func GenerateInitialStructure() {
 		os.Exit(1)
 	}
 	CreateConfigEnv(projectName)
+	CreateConfigTimezonse(projectName)
 	CreateDatabaseConnection(projectName)
 	CreateLoggers(projectName)
 	CreatePagination(projectName)
@@ -405,6 +406,53 @@ func CreateConfigEnv(projectName string) {
 	}
 
 	fmt.Println("Created Config successfully", file)
+}
+
+func CreateConfigTimezonse(projectName string) {
+	pathFolder := "config"
+	if _, err := os.Stat(pathFolder); errors.Is(err, os.ErrNotExist) {
+		err := os.Mkdir(pathFolder, os.ModePerm)
+		if err != nil {
+			fmt.Println("Failed to create folder:", err)
+			return
+		}
+	}
+
+	file := pathFolder + "/timezone.go"
+	if _, err := os.Stat(file); os.IsNotExist(err) {
+		destination, err := os.Create(file)
+		if err != nil {
+			fmt.Println("Failed to create file:", err)
+			return
+		}
+		defer destination.Close()
+
+		content := `package config
+
+import (
+	"log"
+	"time"
+	_ "time/tzdata"
+)
+
+func init() {
+	location, err := time.LoadLocation("Asia/Bangkok")
+	if err != nil {
+		log.Fatal("ERROR_LOADING_TIMEZONE", err)
+	}
+	time.Local = location
+}
+`
+		_, err = destination.WriteString(content)
+		if err != nil {
+			fmt.Println("Failed to write content:", err)
+			return
+		}
+
+		fmt.Println("Created Config Timezone successfully:", file)
+	} else {
+		fmt.Println("File already exists:", file)
+	}
 }
 
 func CreateAppErrs() {
