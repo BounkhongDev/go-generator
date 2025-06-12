@@ -988,26 +988,26 @@ func CreateControllers(filename string, projectName string) {
 			cases.Title(language.Und, cases.NoLower).String(strings.ReplaceAll(filename, "_", " ")),
 			" ", "", -1,
 		)
-		lower := strings.ToLower(string(upper[0])) + upper[1:]
+		// lower := strings.ToLower(string(upper[0])) + upper[1:]
 
 		fmt.Fprintf(destination, "package %s\n\n", filename)
 		fmt.Fprintf(destination, "import (\n")
 		fmt.Fprintf(destination, "\t\"github.com/gofiber/fiber/v2\"\n")
 		fmt.Fprintf(destination, ")\n\n")
 
-		fmt.Fprintf(destination, "type %sController interface {\n", upper)
-		fmt.Fprintf(destination, "\tPingController(ctx *fiber.Ctx) error\n")
-		fmt.Fprintf(destination, "}\n\n")
+		// fmt.Fprintf(destination, "type %sController interface {\n", upper)
+		// fmt.Fprintf(destination, "\tPingController(ctx *fiber.Ctx) error\n")
+		// fmt.Fprintf(destination, "}\n\n")
 
-		fmt.Fprintf(destination, "type %sController struct {\n", lower)
+		fmt.Fprintf(destination, "type %sController struct {\n", upper)
 		fmt.Fprintf(destination, "\tservice %sService\n", upper) // use the local service type without import
 		fmt.Fprintf(destination, "}\n\n")
 
 		fmt.Fprintf(destination, "func New%sController(service %sService) %sController {\n", upper, upper, upper)
-		fmt.Fprintf(destination, "\treturn &%sController{service: service}\n", lower)
+		fmt.Fprintf(destination, "\treturn %sController{service: service}\n", upper)
 		fmt.Fprintf(destination, "}\n\n")
 
-		fmt.Fprintf(destination, "func (c *%sController) PingController(ctx *fiber.Ctx) error {\n", lower)
+		fmt.Fprintf(destination, "func (c *%sController) PingController(ctx *fiber.Ctx) error {\n", upper)
 		fmt.Fprintf(destination, "\treturn ctx.JSON(fiber.Map{\n")
 		fmt.Fprintf(destination, "\t\t\"message\": \"pong\",\n")
 		fmt.Fprintf(destination, "\t})\n")
@@ -1099,46 +1099,30 @@ func CreateTestsStructure(filename string, projectName string) {
 		cases.Title(language.Und, cases.NoLower).String(strings.ReplaceAll(filename, "_", " ")),
 		" ", "", -1,
 	)
-	lower := strings.ToLower(string(upper[0])) + upper[1:]
+	lower := strings.ToLower(upper) // Fixed the undefined error by initializing lower
 
 	createFile(testFolder+"/"+filename+"_service_test.go", fmt.Sprintf(`package %s
 
-import (
-	"testing"
-	"github.com/stretchr/testify/assert"
-	"%s/internal/%s"
-	
-)
+	import (
+		"testing"
+		"github.com/stretchr/testify/assert"
+	)
 
-func Test%sService(t *testing.T) {
-	// TODO: Write tests for %s service
-	assert.True(t, true)
-}`, filename, projectName, filename, upper, lower))
-
-	createFile(testFolder+"/"+filename+"_controller_test.go", fmt.Sprintf(`package %s
-
-import (
-	"testing"
-	"github.com/stretchr/testify/assert"
-	"github.com/gofiber/fiber/v2"
-)
-
-func Test%sController(t *testing.T) {
-	// TODO: Write tests for %s controller
-	app := fiber.New()
-	assert.NotNil(t, app)
-}`, filename, upper, lower))
+	func Test%sService(t *testing.T) {
+		// TODO: Write tests for %s service
+		assert.True(t, true)
+	}`, filename, upper, lower))
 
 	createFile(testFolder+"/"+filename+"_repository_mock.go", fmt.Sprintf(`package %s
 
-import "github.com/stretchr/testify/mock"
+	import "github.com/stretchr/testify/mock"
 
-type %sRepositoryMock struct {
-	mock.Mock
-}
+	type %sRepositoryMock struct {
+		mock.Mock
+	}
 
-// TODO: Add mock implementations
-`, filename, upper))
+	// TODO: Add mock implementations
+	`, filename, upper))
 
 	fmt.Println("Test structure created successfully at", testFolder)
 }
