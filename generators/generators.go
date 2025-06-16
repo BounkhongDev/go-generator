@@ -330,7 +330,7 @@ func CreateHandleResponse(projectName string) {
 		fmt.Fprintf(destination, "	})\n")
 		fmt.Fprintf(destination, "}\n")
 
-		fmt.Println("✅ Created responses package successfully:", file)
+		fmt.Println("Created responses package successfully:", file)
 	} else {
 		fmt.Println("⚠️ File already exists:", file)
 	}
@@ -695,7 +695,7 @@ func CreatePagination(projectName string) {
 		fmt.Fprintf(destination, "	return pagination, nil\n")
 		fmt.Fprintf(destination, "}\n")
 
-		fmt.Println("✅ Created pagination helper successfully:", file)
+		fmt.Println("Created pagination helper successfully:", file)
 	} else {
 		fmt.Println("⚠️ File already exists:", file)
 	}
