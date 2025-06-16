@@ -34,6 +34,10 @@ func main() {
 		if le := strings.Split(projectName, " "); len(le) > 1 {
 			log.Fatal("Project name must not contain space")
 		}
+		//validate project name must not -
+		if le := strings.Split(projectName, "-"); len(le) > 1 {
+			log.Fatal("Project name must not contain -")
+		}
 
 		cmd := exec.Command("go", "mod", "init", projectName)
 		if errors.Is(cmd.Err, exec.ErrDot) {
@@ -55,6 +59,10 @@ func main() {
 
 		generators.GenerateInitialStructure()
 	} else {
+		//To validate module name is have -
+		if le := strings.Split(moduleName, "-"); len(le) > 1 {
+			log.Fatal("Module name must not contain -")
+		}
 		generators.GenerateModules(moduleName)
 	}
 }
