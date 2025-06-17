@@ -325,8 +325,6 @@ func CreateHandleResponse(projectName string) {
 		fmt.Fprintf(destination, "	return ctx.Status(http.StatusCreated).JSON(APIResponse{\n")
 		fmt.Fprintf(destination, "		Success: true,\n")
 		fmt.Fprintf(destination, "		Message: message,\n")
-		fmt.Fprintf(destination, "		Data:    data,\n")
-		fmt.Fprintf(destination, "		Errors:  nil,\n")
 		fmt.Fprintf(destination, "	})\n")
 		fmt.Fprintf(destination, "}\n")
 
