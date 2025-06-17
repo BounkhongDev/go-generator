@@ -641,8 +641,8 @@ func CreatePagination(projectName string) {
 		fmt.Fprintf(destination, "	UserID    string `json:\"user_id\"`\n")
 		fmt.Fprintf(destination, "}\n\n")
 
-		fmt.Fprintf(destination, "// PaginationData is the inner data field of a paginated API response\n")
-		fmt.Fprintf(destination, "type PaginationData struct {\n")
+		fmt.Fprintf(destination, "// PaginatedResponse is the inner data field of a paginated API response\n")
+		fmt.Fprintf(destination, "type PaginatedResponse struct {\n")
 		fmt.Fprintf(destination, "	TotalItems    int         `json:\"total_items\"`\n")
 		fmt.Fprintf(destination, "	ItemsPerPage  int         `json:\"items_per_page\"`\n")
 		fmt.Fprintf(destination, "	CurrentPage   int         `json:\"current_page\"`\n")
@@ -653,7 +653,7 @@ func CreatePagination(projectName string) {
 		fmt.Fprintf(destination, "}\n\n")
 
 		fmt.Fprintf(destination, "// Paginate applies limit, offset, and preload to the DB query\n")
-		fmt.Fprintf(destination, "func Paginate(db *gorm.DB, paginate PaginateRequest, resultModel interface{}) (*PaginationData, error) {\n")
+		fmt.Fprintf(destination, "func Paginate(db *gorm.DB, paginate PaginateRequest, resultModel interface{}) (*PaginatedResponse, error) {\n")
 		fmt.Fprintf(destination, "	if paginate.Limit <= 0 {\n")
 		fmt.Fprintf(destination, "		paginate.Limit = 10\n")
 		fmt.Fprintf(destination, "	}\n")
@@ -683,7 +683,7 @@ func CreatePagination(projectName string) {
 		fmt.Fprintf(destination, "		previousPage = &prev\n")
 		fmt.Fprintf(destination, "	}\n\n")
 
-		fmt.Fprintf(destination, "	pagination := &PaginationData{\n")
+		fmt.Fprintf(destination, "	pagination := &PaginatedResponse{\n")
 		fmt.Fprintf(destination, "		TotalItems:   int(total),\n")
 		fmt.Fprintf(destination, "		ItemsPerPage: paginate.Limit,\n")
 		fmt.Fprintf(destination, "		CurrentPage:  paginate.Page,\n")
