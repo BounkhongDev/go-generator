@@ -58,6 +58,7 @@ func CreateMainGo(projectName string) {
 		fmt.Fprintf(destination, "	\"github.com/gofiber/fiber/v2\"\n")
 		fmt.Fprintf(destination, "	\"github.com/gofiber/fiber/v2/middleware/cors\"\n")
 		fmt.Fprintf(destination, "	\"github.com/gofiber/fiber/v2/middleware/logger\"\n")
+		fmt.Fprintf(destination, "	\"github.com/gofiber/fiber/v2/middleware/requestid\"\n")
 		fmt.Fprintf(destination, "	\"%s/config\"\n", projectName)
 		fmt.Fprintf(destination, "	\"%s/database\"\n", projectName)
 		fmt.Fprintf(destination, "	\"%s/routes\"\n", projectName)
@@ -90,6 +91,9 @@ func CreateMainGo(projectName string) {
 		fmt.Fprintf(destination, "	})\n")
 		fmt.Fprintf(destination, "	app.Use(logger.New())\n")
 		fmt.Fprintf(destination, "	app.Use(cors.New())\n\n")
+
+		fmt.Fprintf(destination, "	// Initialize log requestid\n")
+		fmt.Fprintf(destination, "	app.Use(requestid.New())\n\n")
 
 		fmt.Fprintf(destination, "	// Register routes\n")
 		fmt.Fprintf(destination, "	routes.NewFiberRoutes(exampleController).Install(app)\n\n")
