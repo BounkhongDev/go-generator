@@ -34,7 +34,7 @@ func GenerateInitialStructure() {
 	CreateValidation()
 	CreateMainGo(projectName)
 	CreateSrcDir()
-	CreateExampleConfig()
+	CreateExampleConfig(projectName)
 	GenerateModules("example")
 	CreateMiddleware(projectName)
 }
@@ -52,6 +52,7 @@ func CreateMainGo(projectName string) {
 		fmt.Fprintf(destination, "package main\n\n")
 
 		fmt.Fprintf(destination, "import (\n")
+		fmt.Fprintf(destination, "\t\"context\"\n")
 		fmt.Fprintf(destination, "\t\"encoding/json\"\n")
 		fmt.Fprintf(destination, "\t\"fmt\"\n")
 		fmt.Fprintf(destination, "\t\"log\"\n")
@@ -107,11 +108,20 @@ func CreateMainGo(projectName string) {
 		fmt.Fprintf(destination, "\t\t},\n")
 		fmt.Fprintf(destination, "\t})\n\n")
 
-		fmt.Fprintf(destination, "\t// Middleware\n")
+		fmt.Fprintf(destination, "\t// Middleware - ECS-formatted JSON logs for Elastic/Kibana\n")
 		fmt.Fprintf(destination, "\tapp.Use(recover.New())\n")
 		fmt.Fprintf(destination, "\tapp.Use(requestid.New())\n")
+		fmt.Fprintf(destination, "\tapp.Use(func(c *fiber.Ctx) error {\n")
+		fmt.Fprintf(destination, "\t\tif id := c.Locals(\"requestid\"); id != nil {\n")
+		fmt.Fprintf(destination, "\t\t\tc.SetUserContext(context.WithValue(c.Context(), \"requestid\", id))\n")
+		fmt.Fprintf(destination, "\t\t}\n")
+		fmt.Fprintf(destination, "\t\treturn c.Next()\n")
+		fmt.Fprintf(destination, "\t})\n")
+		fmt.Fprintf(destination, "\tserviceName := config.GetEnv(\"app.name\", \"%s\")\n", projectName)
 		fmt.Fprintf(destination, "\tapp.Use(logger.New(logger.Config{\n")
-		fmt.Fprintf(destination, "\t\tFormat: \"${time} | ${status} | ${latency} | ${ip} | ${method} | ${path}\\n\",\n")
+		fmt.Fprintf(destination, "\t\tFormat:     \"{\\\"@timestamp\\\":\\\"${time}\\\",\\\"log.level\\\":\\\"info\\\",\\\"message\\\":\\\"http request\\\",\\\"http.request.method\\\":\\\"${method}\\\",\\\"http.response.status_code\\\":${status},\\\"event.duration\\\":\\\"${latency}\\\",\\\"client.ip\\\":\\\"${ip}\\\",\\\"url.path\\\":\\\"${path}\\\",\\\"trace.id\\\":\\\"${locals:requestid}\\\",\\\"service.name\\\":\\\"\" + serviceName + \"\\\"}\\\n\",\n")
+		fmt.Fprintf(destination, "\t\tTimeFormat: \"2006-01-02T15:04:05.000Z07:00\",\n")
+		fmt.Fprintf(destination, "\t\tTimeZone:   \"UTC\",\n")
 		fmt.Fprintf(destination, "\t}))\n")
 		fmt.Fprintf(destination, "\tapp.Use(cors.New(cors.Config{\n")
 		fmt.Fprintf(destination, "\t\tAllowOrigins: \"*\",\n")
@@ -638,13 +648,14 @@ func CreateLoggers(projectName string) {
 		}
 		defer destination.Close()
 
-		// Write the logging package code to the file
+		// Write the logging package code - ECS format for Elastic/Kibana
 		fmt.Fprintf(destination, "package logs\n\n")
 
 		fmt.Fprintf(destination, "import (\n")
 		fmt.Fprintf(destination, "\t\"context\"\n")
 		fmt.Fprintf(destination, "\t\"fmt\"\n")
 		fmt.Fprintf(destination, "\n")
+		fmt.Fprintf(destination, "\t\"%s/config\"\n", projectName)
 		fmt.Fprintf(destination, "\t\"go.uber.org/zap\"\n")
 		fmt.Fprintf(destination, "\t\"go.uber.org/zap/zapcore\"\n")
 		fmt.Fprintf(destination, ")\n\n")
@@ -653,39 +664,54 @@ func CreateLoggers(projectName string) {
 		fmt.Fprintf(destination, "var err error\n\n")
 
 		fmt.Fprintf(destination, "func init() {\n")
-		fmt.Fprintf(destination, "\tconfig := zap.NewProductionConfig()\n")
-		fmt.Fprintf(destination, "\tconfig.EncoderConfig.TimeKey = \"timestamp\"\n")
-		fmt.Fprintf(destination, "\tconfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder\n")
-		fmt.Fprintf(destination, "\tconfig.EncoderConfig.StacktraceKey = \"\"\n")
-		fmt.Fprintf(destination, "\tlog, err = config.Build(zap.AddCallerSkip(1))\n\n")
-		fmt.Fprintf(destination, "\tconfig.OutputPaths = []string{\"stdout\"} // Change to \"stderr\" if needed\n\n")
+		fmt.Fprintf(destination, "\tcfg := zap.NewProductionConfig()\n")
+		fmt.Fprintf(destination, "\t// ECS field names for Elastic/Kibana\n")
+		fmt.Fprintf(destination, "\tcfg.EncoderConfig.TimeKey = \"@timestamp\"\n")
+		fmt.Fprintf(destination, "\tcfg.EncoderConfig.LevelKey = \"log.level\"\n")
+		fmt.Fprintf(destination, "\tcfg.EncoderConfig.MessageKey = \"message\"\n")
+		fmt.Fprintf(destination, "\tcfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder\n")
+		fmt.Fprintf(destination, "\tcfg.EncoderConfig.StacktraceKey = \"\"\n")
+		fmt.Fprintf(destination, "\tcfg.InitialFields = map[string]interface{}{\"service.name\": config.GetEnv(\"app.name\", \"%s\")}\n", projectName)
+		fmt.Fprintf(destination, "\tlog, err = cfg.Build(zap.AddCallerSkip(1))\n")
 		fmt.Fprintf(destination, "\tif err != nil {\n")
 		fmt.Fprintf(destination, "\t\tfmt.Println(err)\n")
 		fmt.Fprintf(destination, "\t\treturn\n")
 		fmt.Fprintf(destination, "\t}\n")
 		fmt.Fprintf(destination, "}\n\n")
 
+		fmt.Fprintf(destination, "// Info logs with ECS fields: @timestamp, log.level, message, trace.id, service.name\n")
 		fmt.Fprintf(destination, "func Info(message string, ctx context.Context, fields ...zap.Field) {\n")
-		fmt.Fprintf(destination, "\trequestId := ctx.Value(\"requestid\")\n")
-		fmt.Fprintf(destination, "\tif requestId != nil {\n")
-		fmt.Fprintf(destination, "\t\tfields = append(fields, zap.String(\"request_id\", requestId.(string)))\n")
+		fmt.Fprintf(destination, "\tif id := ctx.Value(\"requestid\"); id != nil {\n")
+		fmt.Fprintf(destination, "\t\tfields = append(fields, zap.String(\"trace.id\", fmt.Sprint(id)))\n")
 		fmt.Fprintf(destination, "\t}\n")
 		fmt.Fprintf(destination, "\tlog.Info(message, fields...)\n")
 		fmt.Fprintf(destination, "}\n\n")
 
+		fmt.Fprintf(destination, "// Warn logs with ECS fields\n")
+		fmt.Fprintf(destination, "func Warn(message string, ctx context.Context, fields ...zap.Field) {\n")
+		fmt.Fprintf(destination, "\tif id := ctx.Value(\"requestid\"); id != nil {\n")
+		fmt.Fprintf(destination, "\t\tfields = append(fields, zap.String(\"trace.id\", fmt.Sprint(id)))\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\tlog.Warn(message, fields...)\n")
+		fmt.Fprintf(destination, "}\n\n")
+
+		fmt.Fprintf(destination, "// Error logs with ECS fields: @timestamp, log.level, message, error.message, trace.id, service.name\n")
 		fmt.Fprintf(destination, "func Error(message interface{}, ctx context.Context, fields ...zap.Field) {\n")
-		fmt.Fprintf(destination, "\trequestId := ctx.Value(\"requestid\")\n")
-		fmt.Fprintf(destination, "\tif requestId != nil {\n")
-		fmt.Fprintf(destination, "\t\tfields = append(fields, zap.String(\"request_id\", requestId.(string)))\n")
-		fmt.Fprintf(destination, "\t}\n\n")
+		fmt.Fprintf(destination, "\tif id := ctx.Value(\"requestid\"); id != nil {\n")
+		fmt.Fprintf(destination, "\t\tfields = append(fields, zap.String(\"trace.id\", fmt.Sprint(id)))\n")
+		fmt.Fprintf(destination, "\t}\n")
 		fmt.Fprintf(destination, "\tswitch v := message.(type) {\n")
 		fmt.Fprintf(destination, "\tcase error:\n")
+		fmt.Fprintf(destination, "\t\tfields = append(fields, zap.String(\"error.message\", v.Error()))\n")
 		fmt.Fprintf(destination, "\t\tlog.Error(v.Error(), fields...)\n")
 		fmt.Fprintf(destination, "\tcase string:\n")
 		fmt.Fprintf(destination, "\t\tlog.Error(v, fields...)\n")
+		fmt.Fprintf(destination, "\tdefault:\n")
+		fmt.Fprintf(destination, "\t\tlog.Error(fmt.Sprint(v), fields...)\n")
 		fmt.Fprintf(destination, "\t}\n")
 		fmt.Fprintf(destination, "}\n\n")
 
+		fmt.Fprintf(destination, "// Debug logs with ECS fields\n")
 		fmt.Fprintf(destination, "func Debug(message string, fields ...zap.Field) {\n")
 		fmt.Fprintf(destination, "\tlog.Debug(message, fields...)\n")
 		fmt.Fprintf(destination, "}\n")
@@ -1511,7 +1537,7 @@ func getProjectName() (string, error) {
 	return "", errors.New("could not determine module name")
 }
 
-func CreateExampleConfig() {
+func CreateExampleConfig(projectName string) {
 	pathFolder := "./"
 	if _, err := os.Stat(pathFolder); errors.Is(err, os.ErrNotExist) {
 		err := os.Mkdir(pathFolder, os.ModePerm)
@@ -1532,8 +1558,9 @@ func CreateExampleConfig() {
 		}
 		defer destination.Close()
 
-		// Write the logging package code to the file
+		// Write the example config
 		fmt.Fprintf(destination, "app:\n")
+		fmt.Fprintf(destination, "  name: \"%s\"  # ECS service.name for Elastic/Kibana\n", projectName)
 		fmt.Fprintf(destination, "  port: 8080\n")
 		fmt.Fprintf(destination, "\n")
 		fmt.Fprintf(destination, "secrete:\n")
@@ -1548,7 +1575,7 @@ func CreateExampleConfig() {
 		fmt.Fprintf(destination, "\n")
 		fmt.Fprintf(destination, "redis:\n")
 		fmt.Fprintf(destination, "  host: localhost\n")
-		fmt.Fprintf(destination, "  port: 6479\n")
+		fmt.Fprintf(destination, "  port: 6379\n")
 
 		fmt.Println("Created Example Config successfully", file)
 	} else {

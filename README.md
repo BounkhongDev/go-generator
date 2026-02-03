@@ -9,6 +9,7 @@ A simple and opinionated project generator for Go (Golang), designed to help you
 - Generate a new Go project structure
 - Easily create new modules with full CRUD templates
 - RESTful API with standard response format (success, pagination, validation error, general error)
+- ECS-formatted JSON logs for Elasticsearch and Kibana
 - Supports `macOS`, `Linux`, and `Windows`
 - Automatically adds the generator to your system path
 
@@ -258,6 +259,64 @@ Used when the request fails for reasons other than validation (4xx/5xx).
 4. **Validate input** before processing (the generator adds validation tags)
 5. **Handle errors consistently** using `responses.NewErrorResponse`, `responses.NewValidationError`
 6. **Use idempotent methods** – GET, PUT, DELETE should be idempotent
+
+---
+
+## 📋 Log Output Samples (ECS format for Elastic/Kibana)
+
+All logs use [Elastic Common Schema (ECS)](https://www.elastic.co/guide/en/ecs/current/index.html) for Elasticsearch and Kibana.
+
+### HTTP Request Log (Fiber middleware – each request)
+
+**Success (200):**
+```json
+{"@timestamp":"2026-02-02T10:30:00.000Z","log.level":"info","message":"http request","http.request.method":"GET","http.response.status_code":200,"event.duration":"12.5ms","client.ip":"192.168.1.1","url.path":"/api/v1/users","trace.id":"abc-123","service.name":"hrms-service"}
+```
+
+**Not Found (404):**
+```json
+{"@timestamp":"2026-02-02T10:30:01.000Z","log.level":"info","message":"http request","http.request.method":"GET","http.response.status_code":404,"event.duration":"2ms","client.ip":"192.168.1.1","url.path":"/api/v1/users/999","trace.id":"abc-124","service.name":"hrms-service"}
+```
+
+**Server Error (500):**
+```json
+{"@timestamp":"2026-02-02T10:30:03.000Z","log.level":"info","message":"http request","http.request.method":"POST","http.response.status_code":500,"event.duration":"150ms","client.ip":"192.168.1.1","url.path":"/api/v1/users","trace.id":"abc-126","service.name":"hrms-service"}
+```
+
+### Application Logs (Zap – `logs` package)
+
+**Info:**
+```json
+{"@timestamp":"2026-02-02T10:30:00.123Z","log.level":"info","message":"User created","service.name":"hrms-service","trace.id":"abc-123","caller":"service.go:50","user_id":1}
+```
+
+**Error:**
+```json
+{"@timestamp":"2026-02-02T10:30:01.456Z","log.level":"error","message":"database connection failed","service.name":"hrms-service","trace.id":"abc-124","error.message":"connection refused","caller":"repository.go:30"}
+```
+
+**Debug:**
+```json
+{"@timestamp":"2026-02-02T10:30:00.999Z","log.level":"debug","message":"processing request","service.name":"hrms-service","caller":"handler.go:100"}
+```
+
+### ECS fields per log type
+
+| Field | HTTP log | App log |
+|-------|:--------:|:-------:|
+| `@timestamp` | ✓ | ✓ |
+| `log.level` | ✓ | ✓ |
+| `message` | ✓ | ✓ |
+| `trace.id` | ✓ | ✓ |
+| `service.name` | ✓ | ✓ |
+| `error.message` | — | ✓ (on error) |
+| `http.request.method` | ✓ | — |
+| `http.response.status_code` | ✓ | — |
+| `event.duration` | ✓ | — |
+| `client.ip` | ✓ | — |
+| `url.path` | ✓ | — |
+
+**Note:** Ensure `requestid` middleware runs before your handlers so `trace.id` is set. Use `logs.Info(msg, ctx.Context(), ...)` from handlers so the context carries `trace.id`.
 
 ---
 
