@@ -34,7 +34,7 @@ func GenerateInitialStructure() {
 	CreateValidation()
 	CreateMainGo(projectName)
 	CreateSrcDir()
-	CreateExampleConfig()
+	CreateExampleConfig(projectName)
 	GenerateModules("example")
 	CreateMiddleware(projectName)
 }
@@ -52,55 +52,93 @@ func CreateMainGo(projectName string) {
 		fmt.Fprintf(destination, "package main\n\n")
 
 		fmt.Fprintf(destination, "import (\n")
-		fmt.Fprintf(destination, "	\"encoding/json\"\n")
-		fmt.Fprintf(destination, "	\"fmt\"\n")
-		fmt.Fprintf(destination, "	\"log\"\n")
-		fmt.Fprintf(destination, "	\"github.com/gofiber/fiber/v2\"\n")
-		fmt.Fprintf(destination, "	\"github.com/gofiber/fiber/v2/middleware/cors\"\n")
-		fmt.Fprintf(destination, "	\"github.com/gofiber/fiber/v2/middleware/logger\"\n")
-		fmt.Fprintf(destination, "	\"github.com/gofiber/fiber/v2/middleware/requestid\"\n")
-		fmt.Fprintf(destination, "	\"%s/config\"\n", projectName)
-		fmt.Fprintf(destination, "	\"%s/database\"\n", projectName)
-		fmt.Fprintf(destination, "	\"%s/routes\"\n", projectName)
-		fmt.Fprintf(destination, "	\"%s/internal/controllers\"\n", projectName)
-		fmt.Fprintf(destination, "	\"%s/internal/services\"\n", projectName)
-		fmt.Fprintf(destination, "	\"%s/internal/repositories\"\n", projectName)
-		fmt.Fprintf(destination, "	\"%s/migrations\"\n", projectName)
+		fmt.Fprintf(destination, "\t\"context\"\n")
+		fmt.Fprintf(destination, "\t\"encoding/json\"\n")
+		fmt.Fprintf(destination, "\t\"fmt\"\n")
+		fmt.Fprintf(destination, "\t\"log\"\n")
+		fmt.Fprintf(destination, "\t\"net/http\"\n\n")
+		fmt.Fprintf(destination, "\t\"github.com/gofiber/fiber/v2\"\n")
+		fmt.Fprintf(destination, "\t\"github.com/gofiber/fiber/v2/middleware/cors\"\n")
+		fmt.Fprintf(destination, "\t\"github.com/gofiber/fiber/v2/middleware/logger\"\n")
+		fmt.Fprintf(destination, "\t\"github.com/gofiber/fiber/v2/middleware/recover\"\n")
+		fmt.Fprintf(destination, "\t\"github.com/gofiber/fiber/v2/middleware/requestid\"\n\n")
+		fmt.Fprintf(destination, "\t\"%s/config\"\n", projectName)
+		fmt.Fprintf(destination, "\t\"%s/database\"\n", projectName)
+		fmt.Fprintf(destination, "\t\"%s/internal/controllers\"\n", projectName)
+		fmt.Fprintf(destination, "\t\"%s/internal/repositories\"\n", projectName)
+		fmt.Fprintf(destination, "\t\"%s/internal/services\"\n", projectName)
+		fmt.Fprintf(destination, "\t\"%s/migrations\"\n", projectName)
+		fmt.Fprintf(destination, "\t\"%s/routes\"\n", projectName)
 		fmt.Fprintf(destination, ")\n\n")
 
 		fmt.Fprintf(destination, "func main() {\n")
-		fmt.Fprintf(destination, "	// Connect to database\n")
-		fmt.Fprintf(destination, "	db, err := database.PostgresConnection()\n")
-		fmt.Fprintf(destination, "	if err != nil {\n")
-		fmt.Fprintf(destination, "		log.Fatal(err)\n")
-		fmt.Fprintf(destination, "	}\n\n")
+		fmt.Fprintf(destination, "\t// Connect to database\n")
+		fmt.Fprintf(destination, "\tdb, err := database.PostgresConnection()\n")
+		fmt.Fprintf(destination, "\tif err != nil {\n")
+		fmt.Fprintf(destination, "\t\tlog.Fatal(err)\n")
+		fmt.Fprintf(destination, "\t}\n\n")
 
-		fmt.Fprintf(destination, "	// Run migrations\n")
-		fmt.Fprintf(destination, "	if err := migrations.MigrateAll(db); err != nil {\n")
-		fmt.Fprintf(destination, "		log.Fatalf(\"Migration failed: %%v\", err)\n")
-		fmt.Fprintf(destination, "	}\n\n")
+		fmt.Fprintf(destination, "\t// Run migrations\n")
+		fmt.Fprintf(destination, "\tif err := migrations.MigrateAll(db); err != nil {\n")
+		fmt.Fprintf(destination, "\t\tlog.Fatalf(\"Migration failed: %%v\", err)\n")
+		fmt.Fprintf(destination, "\t}\n\n")
 
-		fmt.Fprintf(destination, "	// Initialize example module\n")
-		fmt.Fprintf(destination, "	exampleRepo := repositories.NewExampleRepository(db)\n")
-		fmt.Fprintf(destination, "	exampleService := services.NewExampleService(exampleRepo)\n")
-		fmt.Fprintf(destination, "	exampleController := controllers.NewExampleController(exampleService)\n\n")
+		fmt.Fprintf(destination, "\t// Initialize example module\n")
+		fmt.Fprintf(destination, "\texampleRepo := repositories.NewExampleRepository(db)\n")
+		fmt.Fprintf(destination, "\texampleService := services.NewExampleService(exampleRepo)\n")
+		fmt.Fprintf(destination, "\texampleController := controllers.NewExampleController(exampleService)\n\n")
 
-		fmt.Fprintf(destination, "	// TODO: Add more modules here...\n\n")
+		fmt.Fprintf(destination, "\t// TODO: Add more modules here...\n\n")
 
-		fmt.Fprintf(destination, "	app := fiber.New(fiber.Config{\n")
-		fmt.Fprintf(destination, "		JSONEncoder: json.Marshal,\n")
-		fmt.Fprintf(destination, "		JSONDecoder: json.Unmarshal,\n")
-		fmt.Fprintf(destination, "	})\n")
-		fmt.Fprintf(destination, "	app.Use(logger.New())\n")
-		fmt.Fprintf(destination, "	app.Use(cors.New())\n\n")
+		fmt.Fprintf(destination, "\t// Create Fiber app with custom error handler\n")
+		fmt.Fprintf(destination, "\tapp := fiber.New(fiber.Config{\n")
+		fmt.Fprintf(destination, "\t\tJSONEncoder: json.Marshal,\n")
+		fmt.Fprintf(destination, "\t\tJSONDecoder: json.Unmarshal,\n")
+		fmt.Fprintf(destination, "\t\tErrorHandler: func(ctx *fiber.Ctx, err error) error {\n")
+		fmt.Fprintf(destination, "\t\t\tcode := http.StatusInternalServerError\n")
+		fmt.Fprintf(destination, "\t\t\tif e, ok := err.(*fiber.Error); ok {\n")
+		fmt.Fprintf(destination, "\t\t\t\tcode = e.Code\n")
+		fmt.Fprintf(destination, "\t\t\t}\n")
+		fmt.Fprintf(destination, "\t\t\treturn ctx.Status(code).JSON(fiber.Map{\n")
+		fmt.Fprintf(destination, "\t\t\t\t\"type\":   \"about:blank\",\n")
+		fmt.Fprintf(destination, "\t\t\t\t\"title\":  http.StatusText(code),\n")
+		fmt.Fprintf(destination, "\t\t\t\t\"status\": code,\n")
+		fmt.Fprintf(destination, "\t\t\t\t\"detail\": err.Error(),\n")
+		fmt.Fprintf(destination, "\t\t\t})\n")
+		fmt.Fprintf(destination, "\t\t},\n")
+		fmt.Fprintf(destination, "\t})\n\n")
 
-		fmt.Fprintf(destination, "	// Initialize log requestid\n")
-		fmt.Fprintf(destination, "	app.Use(requestid.New())\n\n")
+		fmt.Fprintf(destination, "\t// Middleware - ECS-formatted JSON logs for Elastic/Kibana\n")
+		fmt.Fprintf(destination, "\tapp.Use(recover.New())\n")
+		fmt.Fprintf(destination, "\tapp.Use(requestid.New())\n")
+		fmt.Fprintf(destination, "\tapp.Use(func(c *fiber.Ctx) error {\n")
+		fmt.Fprintf(destination, "\t\tif id := c.Locals(\"requestid\"); id != nil {\n")
+		fmt.Fprintf(destination, "\t\t\tc.SetUserContext(context.WithValue(c.Context(), \"requestid\", id))\n")
+		fmt.Fprintf(destination, "\t\t}\n")
+		fmt.Fprintf(destination, "\t\treturn c.Next()\n")
+		fmt.Fprintf(destination, "\t})\n")
+		fmt.Fprintf(destination, "\tserviceName := config.GetEnv(\"app.name\", \"%s\")\n", projectName)
+		fmt.Fprintf(destination, "\tapp.Use(logger.New(logger.Config{\n")
+		fmt.Fprintf(destination, "\t\tFormat:     \"{\\\"@timestamp\\\":\\\"${time}\\\",\\\"log.level\\\":\\\"info\\\",\\\"message\\\":\\\"http request\\\",\\\"http.request.method\\\":\\\"${method}\\\",\\\"http.response.status_code\\\":${status},\\\"event.duration\\\":\\\"${latency}\\\",\\\"client.ip\\\":\\\"${ip}\\\",\\\"url.path\\\":\\\"${path}\\\",\\\"trace.id\\\":\\\"${locals:requestid}\\\",\\\"service.name\\\":\\\"\" + serviceName + \"\\\"}\\\n\",\n")
+		fmt.Fprintf(destination, "\t\tTimeFormat: \"2006-01-02T15:04:05.000Z07:00\",\n")
+		fmt.Fprintf(destination, "\t\tTimeZone:   \"UTC\",\n")
+		fmt.Fprintf(destination, "\t}))\n")
+		fmt.Fprintf(destination, "\tapp.Use(cors.New(cors.Config{\n")
+		fmt.Fprintf(destination, "\t\tAllowOrigins: \"*\",\n")
+		fmt.Fprintf(destination, "\t\tAllowMethods: \"GET,POST,PUT,DELETE,PATCH,OPTIONS\",\n")
+		fmt.Fprintf(destination, "\t\tAllowHeaders: \"Origin,Content-Type,Accept,Authorization\",\n")
+		fmt.Fprintf(destination, "\t}))\n\n")
 
-		fmt.Fprintf(destination, "	// Register routes\n")
-		fmt.Fprintf(destination, "	routes.NewFiberRoutes(exampleController).Install(app)\n\n")
+		fmt.Fprintf(destination, "\t// Register routes\n")
+		fmt.Fprintf(destination, "\troutes.NewFiberRoutes(exampleController).Install(app)\n\n")
 
-		fmt.Fprintf(destination, "	log.Fatal(app.Listen(fmt.Sprintf(\":%%s\", config.Env(\"app.port\"))))\n")
+		fmt.Fprintf(destination, "\t// Start server\n")
+		fmt.Fprintf(destination, "\tport := config.Env(\"app.port\")\n")
+		fmt.Fprintf(destination, "\tif port == \"\" {\n")
+		fmt.Fprintf(destination, "\t\tport = \"8080\"\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\tlog.Printf(\"Server starting on port %%s\", port)\n")
+		fmt.Fprintf(destination, "\tlog.Fatal(app.Listen(fmt.Sprintf(\":%%s\", port)))\n")
 		fmt.Fprintf(destination, "}\n")
 
 		fmt.Println("Created main.go successfully:", file)
@@ -265,20 +303,23 @@ func CreateHandleResponse(projectName string) {
 		}
 		defer destination.Close()
 
+		// Write response handling code - team standard format
 		fmt.Fprintf(destination, "package responses\n\n")
 		fmt.Fprintf(destination, "import (\n")
-		fmt.Fprintf(destination, "	\"net/http\"\n")
+		fmt.Fprintf(destination, "	\"net/http\"\n\n")
 		fmt.Fprintf(destination, "	\"%s/errs\"\n", projectName)
 		fmt.Fprintf(destination, "	\"github.com/gofiber/fiber/v2\"\n")
 		fmt.Fprintf(destination, ")\n\n")
 
-		fmt.Fprintf(destination, "// ValidationError represents a single validation error.\n")
+		fmt.Fprintf(destination, "// ValidationError represents a single validation error (field + message).\n")
 		fmt.Fprintf(destination, "type ValidationError struct {\n")
 		fmt.Fprintf(destination, "	Field   string `json:\"field\"`\n")
 		fmt.Fprintf(destination, "	Message string `json:\"message\"`\n")
 		fmt.Fprintf(destination, "}\n\n")
 
-		fmt.Fprintf(destination, "// APIResponse defines the standard response structure.\n")
+		fmt.Fprintf(destination, "// APIResponse is the standard response structure for success and error.\n")
+		fmt.Fprintf(destination, "// Success: { success: true, message, data, errors: null }\n")
+		fmt.Fprintf(destination, "// Error:   { success: false, message, data: null, errors: [...] or null }\n")
 		fmt.Fprintf(destination, "type APIResponse struct {\n")
 		fmt.Fprintf(destination, "	Success bool        `json:\"success\"`\n")
 		fmt.Fprintf(destination, "	Message string      `json:\"message\"`\n")
@@ -286,37 +327,7 @@ func CreateHandleResponse(projectName string) {
 		fmt.Fprintf(destination, "	Errors  interface{} `json:\"errors\"`\n")
 		fmt.Fprintf(destination, "}\n\n")
 
-		fmt.Fprintf(destination, "// NewErrorResponse handles application and system errors.\n")
-		fmt.Fprintf(destination, "func NewErrorResponse(ctx *fiber.Ctx, err error) error {\n")
-		fmt.Fprintf(destination, "	var code int\n")
-		fmt.Fprintf(destination, "	var message string\n")
-		fmt.Fprintf(destination, "	switch e := err.(type) {\n")
-		fmt.Fprintf(destination, "	case errs.AppError:\n")
-		fmt.Fprintf(destination, "		code = e.Status\n")
-		fmt.Fprintf(destination, "		message = e.Message\n")
-		fmt.Fprintf(destination, "	default:\n")
-		fmt.Fprintf(destination, "		code = http.StatusUnprocessableEntity\n")
-		fmt.Fprintf(destination, "		message = err.Error()\n")
-		fmt.Fprintf(destination, "	}\n")
-		fmt.Fprintf(destination, "	return ctx.Status(code).JSON(APIResponse{\n")
-		fmt.Fprintf(destination, "		Success: false,\n")
-		fmt.Fprintf(destination, "		Message: message,\n")
-		fmt.Fprintf(destination, "		Data:    nil,\n")
-		fmt.Fprintf(destination, "		Errors:  nil,\n")
-		fmt.Fprintf(destination, "	})\n")
-		fmt.Fprintf(destination, "}\n\n")
-
-		fmt.Fprintf(destination, "// NewValidationError sends validation error response.\n")
-		fmt.Fprintf(destination, "func NewValidationError(ctx *fiber.Ctx, errors []ValidationError) error {\n")
-		fmt.Fprintf(destination, "	return ctx.Status(http.StatusUnprocessableEntity).JSON(APIResponse{\n")
-		fmt.Fprintf(destination, "		Success: false,\n")
-		fmt.Fprintf(destination, "		Message: \"Validation failed\",\n")
-		fmt.Fprintf(destination, "		Data:    nil,\n")
-		fmt.Fprintf(destination, "		Errors:  errors,\n")
-		fmt.Fprintf(destination, "	})\n")
-		fmt.Fprintf(destination, "}\n\n")
-
-		fmt.Fprintf(destination, "// NewSuccessResponse sends a 200 OK response with data.\n")
+		fmt.Fprintf(destination, "// NewSuccessResponse sends a 200 OK - success: true, data, errors: null.\n")
 		fmt.Fprintf(destination, "func NewSuccessResponse(ctx *fiber.Ctx, message string, data interface{}) error {\n")
 		fmt.Fprintf(destination, "	return ctx.Status(http.StatusOK).JSON(APIResponse{\n")
 		fmt.Fprintf(destination, "		Success: true,\n")
@@ -326,17 +337,54 @@ func CreateHandleResponse(projectName string) {
 		fmt.Fprintf(destination, "	})\n")
 		fmt.Fprintf(destination, "}\n\n")
 
-		fmt.Fprintf(destination, "// NewCreatedResponse sends a 201 Created response with data.\n")
+		fmt.Fprintf(destination, "// NewCreatedResponse sends a 201 Created - success: true, data, errors: null.\n")
 		fmt.Fprintf(destination, "func NewCreatedResponse(ctx *fiber.Ctx, message string, data interface{}) error {\n")
 		fmt.Fprintf(destination, "	return ctx.Status(http.StatusCreated).JSON(APIResponse{\n")
 		fmt.Fprintf(destination, "		Success: true,\n")
 		fmt.Fprintf(destination, "		Message: message,\n")
+		fmt.Fprintf(destination, "		Data:    data,\n")
+		fmt.Fprintf(destination, "		Errors:  nil,\n")
 		fmt.Fprintf(destination, "	})\n")
+		fmt.Fprintf(destination, "}\n\n")
+
+		fmt.Fprintf(destination, "// NewValidationError sends 422 - success: false, data: null, errors: [{field, message}].\n")
+		fmt.Fprintf(destination, "func NewValidationError(ctx *fiber.Ctx, validationErrors []ValidationError) error {\n")
+		fmt.Fprintf(destination, "	return ctx.Status(http.StatusUnprocessableEntity).JSON(APIResponse{\n")
+		fmt.Fprintf(destination, "		Success: false,\n")
+		fmt.Fprintf(destination, "		Message: \"Validation failed\",\n")
+		fmt.Fprintf(destination, "		Data:    nil,\n")
+		fmt.Fprintf(destination, "		Errors:  validationErrors,\n")
+		fmt.Fprintf(destination, "	})\n")
+		fmt.Fprintf(destination, "}\n\n")
+
+		fmt.Fprintf(destination, "// NewErrorResponse sends general error - success: false, message, data: null, errors: null.\n")
+		fmt.Fprintf(destination, "func NewErrorResponse(ctx *fiber.Ctx, err error) error {\n")
+		fmt.Fprintf(destination, "	var status int\n")
+		fmt.Fprintf(destination, "	var message string\n")
+		fmt.Fprintf(destination, "	switch e := err.(type) {\n")
+		fmt.Fprintf(destination, "	case errs.AppError:\n")
+		fmt.Fprintf(destination, "		status = e.Status\n")
+		fmt.Fprintf(destination, "		message = e.Message\n")
+		fmt.Fprintf(destination, "	default:\n")
+		fmt.Fprintf(destination, "		status = http.StatusInternalServerError\n")
+		fmt.Fprintf(destination, "		message = err.Error()\n")
+		fmt.Fprintf(destination, "	}\n")
+		fmt.Fprintf(destination, "	return ctx.Status(status).JSON(APIResponse{\n")
+		fmt.Fprintf(destination, "		Success: false,\n")
+		fmt.Fprintf(destination, "		Message: message,\n")
+		fmt.Fprintf(destination, "		Data:    nil,\n")
+		fmt.Fprintf(destination, "		Errors:  nil,\n")
+		fmt.Fprintf(destination, "	})\n")
+		fmt.Fprintf(destination, "}\n\n")
+
+		fmt.Fprintf(destination, "// NewNoContentResponse sends a 204 No Content response.\n")
+		fmt.Fprintf(destination, "func NewNoContentResponse(ctx *fiber.Ctx) error {\n")
+		fmt.Fprintf(destination, "	return ctx.SendStatus(http.StatusNoContent)\n")
 		fmt.Fprintf(destination, "}\n")
 
 		fmt.Println("Created responses package successfully:", file)
 	} else {
-		fmt.Println("⚠️ File already exists:", file)
+		fmt.Println("File already exists:", file)
 	}
 }
 
@@ -486,40 +534,93 @@ func CreateAppErrs() {
 		}
 		defer destination.Close()
 
-		fmt.Fprintf(destination, "package errs\n\n")
-		fmt.Fprintf(destination, "import \"net/http\"\n\n")
-		fmt.Fprintf(destination, "type AppError struct {\n")
-		fmt.Fprintf(destination, "	Status  int\n")
-		fmt.Fprintf(destination, "	Message string\n")
-		fmt.Fprintf(destination, "}\n\n")
-		fmt.Fprintf(destination, "func (a AppError) Error() string {\n")
-		fmt.Fprintf(destination, "	return a.Message\n")
-		fmt.Fprintf(destination, "}\n\n")
-		fmt.Fprintf(destination, "func NewError(code int, errMsg string) error {\n")
-		fmt.Fprintf(destination, "	return AppError{\n")
-		fmt.Fprintf(destination, "		Status:  code,\n")
-		fmt.Fprintf(destination, "		Message: errMsg,\n")
-		fmt.Fprintf(destination, "	}\n")
-		fmt.Fprintf(destination, "}\n\n")
-		fmt.Fprintf(destination, "func ErrorBadRequest(errorMessage string) error {\n")
-		fmt.Fprintf(destination, "	return AppError{\n")
-		fmt.Fprintf(destination, "		Status:  http.StatusBadRequest,\n")
-		fmt.Fprintf(destination, "		Message: errorMessage,\n")
-		fmt.Fprintf(destination, "	}\n")
-		fmt.Fprintf(destination, "}\n\n")
-		fmt.Fprintf(destination, "func ErrorUnprocessableEntity(errorMessage string) error {\n")
-		fmt.Fprintf(destination, "	return AppError{\n")
-		fmt.Fprintf(destination, "		Status:  http.StatusUnprocessableEntity,\n")
-		fmt.Fprintf(destination, "		Message: errorMessage,\n")
-		fmt.Fprintf(destination, "	}\n")
-		fmt.Fprintf(destination, "}\n\n")
-		fmt.Fprintf(destination, "func ErrorInternalServerError(errorMessage string) error {\n")
-		fmt.Fprintf(destination, "	return AppError{\n")
-		fmt.Fprintf(destination, "		Status:  http.StatusInternalServerError,\n")
-		fmt.Fprintf(destination, "		Message: errorMessage,\n")
-		fmt.Fprintf(destination, "	}\n")
-		fmt.Fprintf(destination, "}\n")
+		content := `package errs
 
+import "net/http"
+
+// AppError represents a standard application error with HTTP status code.
+type AppError struct {
+	Status  int
+	Message string
+	Code    string
+}
+
+func (a AppError) Error() string {
+	return a.Message
+}
+
+// NewError creates a custom error with specified code and message.
+func NewError(code int, errMsg string) error {
+	return AppError{
+		Status:  code,
+		Message: errMsg,
+	}
+}
+
+// ErrorBadRequest returns a 400 Bad Request error.
+func ErrorBadRequest(errorMessage string) error {
+	return AppError{
+		Status:  http.StatusBadRequest,
+		Message: errorMessage,
+		Code:    "BAD_REQUEST",
+	}
+}
+
+// ErrorUnauthorized returns a 401 Unauthorized error.
+func ErrorUnauthorized(errorMessage string) error {
+	return AppError{
+		Status:  http.StatusUnauthorized,
+		Message: errorMessage,
+		Code:    "UNAUTHORIZED",
+	}
+}
+
+// ErrorForbidden returns a 403 Forbidden error.
+func ErrorForbidden(errorMessage string) error {
+	return AppError{
+		Status:  http.StatusForbidden,
+		Message: errorMessage,
+		Code:    "FORBIDDEN",
+	}
+}
+
+// ErrorNotFound returns a 404 Not Found error.
+func ErrorNotFound(errorMessage string) error {
+	return AppError{
+		Status:  http.StatusNotFound,
+		Message: errorMessage,
+		Code:    "NOT_FOUND",
+	}
+}
+
+// ErrorConflict returns a 409 Conflict error.
+func ErrorConflict(errorMessage string) error {
+	return AppError{
+		Status:  http.StatusConflict,
+		Message: errorMessage,
+		Code:    "CONFLICT",
+	}
+}
+
+// ErrorUnprocessableEntity returns a 422 Unprocessable Entity error.
+func ErrorUnprocessableEntity(errorMessage string) error {
+	return AppError{
+		Status:  http.StatusUnprocessableEntity,
+		Message: errorMessage,
+		Code:    "UNPROCESSABLE_ENTITY",
+	}
+}
+
+// ErrorInternalServerError returns a 500 Internal Server Error.
+func ErrorInternalServerError(errorMessage string) error {
+	return AppError{
+		Status:  http.StatusInternalServerError,
+		Message: errorMessage,
+		Code:    "INTERNAL_SERVER_ERROR",
+	}
+}
+`
+		destination.WriteString(content)
 		fmt.Println("Created AppErrs successfully", file)
 	} else {
 		fmt.Println("File already exists!", file)
@@ -547,13 +648,14 @@ func CreateLoggers(projectName string) {
 		}
 		defer destination.Close()
 
-		// Write the logging package code to the file
+		// Write the logging package code - ECS format for Elastic/Kibana
 		fmt.Fprintf(destination, "package logs\n\n")
 
 		fmt.Fprintf(destination, "import (\n")
 		fmt.Fprintf(destination, "\t\"context\"\n")
 		fmt.Fprintf(destination, "\t\"fmt\"\n")
 		fmt.Fprintf(destination, "\n")
+		fmt.Fprintf(destination, "\t\"%s/config\"\n", projectName)
 		fmt.Fprintf(destination, "\t\"go.uber.org/zap\"\n")
 		fmt.Fprintf(destination, "\t\"go.uber.org/zap/zapcore\"\n")
 		fmt.Fprintf(destination, ")\n\n")
@@ -562,39 +664,54 @@ func CreateLoggers(projectName string) {
 		fmt.Fprintf(destination, "var err error\n\n")
 
 		fmt.Fprintf(destination, "func init() {\n")
-		fmt.Fprintf(destination, "\tconfig := zap.NewProductionConfig()\n")
-		fmt.Fprintf(destination, "\tconfig.EncoderConfig.TimeKey = \"timestamp\"\n")
-		fmt.Fprintf(destination, "\tconfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder\n")
-		fmt.Fprintf(destination, "\tconfig.EncoderConfig.StacktraceKey = \"\"\n")
-		fmt.Fprintf(destination, "\tlog, err = config.Build(zap.AddCallerSkip(1))\n\n")
-		fmt.Fprintf(destination, "\tconfig.OutputPaths = []string{\"stdout\"} // Change to \"stderr\" if needed\n\n")
+		fmt.Fprintf(destination, "\tcfg := zap.NewProductionConfig()\n")
+		fmt.Fprintf(destination, "\t// ECS field names for Elastic/Kibana\n")
+		fmt.Fprintf(destination, "\tcfg.EncoderConfig.TimeKey = \"@timestamp\"\n")
+		fmt.Fprintf(destination, "\tcfg.EncoderConfig.LevelKey = \"log.level\"\n")
+		fmt.Fprintf(destination, "\tcfg.EncoderConfig.MessageKey = \"message\"\n")
+		fmt.Fprintf(destination, "\tcfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder\n")
+		fmt.Fprintf(destination, "\tcfg.EncoderConfig.StacktraceKey = \"\"\n")
+		fmt.Fprintf(destination, "\tcfg.InitialFields = map[string]interface{}{\"service.name\": config.GetEnv(\"app.name\", \"%s\")}\n", projectName)
+		fmt.Fprintf(destination, "\tlog, err = cfg.Build(zap.AddCallerSkip(1))\n")
 		fmt.Fprintf(destination, "\tif err != nil {\n")
 		fmt.Fprintf(destination, "\t\tfmt.Println(err)\n")
 		fmt.Fprintf(destination, "\t\treturn\n")
 		fmt.Fprintf(destination, "\t}\n")
 		fmt.Fprintf(destination, "}\n\n")
 
+		fmt.Fprintf(destination, "// Info logs with ECS fields: @timestamp, log.level, message, trace.id, service.name\n")
 		fmt.Fprintf(destination, "func Info(message string, ctx context.Context, fields ...zap.Field) {\n")
-		fmt.Fprintf(destination, "\trequestId := ctx.Value(\"requestid\")\n")
-		fmt.Fprintf(destination, "\tif requestId != nil {\n")
-		fmt.Fprintf(destination, "\t\tfields = append(fields, zap.String(\"request_id\", requestId.(string)))\n")
+		fmt.Fprintf(destination, "\tif id := ctx.Value(\"requestid\"); id != nil {\n")
+		fmt.Fprintf(destination, "\t\tfields = append(fields, zap.String(\"trace.id\", fmt.Sprint(id)))\n")
 		fmt.Fprintf(destination, "\t}\n")
 		fmt.Fprintf(destination, "\tlog.Info(message, fields...)\n")
 		fmt.Fprintf(destination, "}\n\n")
 
+		fmt.Fprintf(destination, "// Warn logs with ECS fields\n")
+		fmt.Fprintf(destination, "func Warn(message string, ctx context.Context, fields ...zap.Field) {\n")
+		fmt.Fprintf(destination, "\tif id := ctx.Value(\"requestid\"); id != nil {\n")
+		fmt.Fprintf(destination, "\t\tfields = append(fields, zap.String(\"trace.id\", fmt.Sprint(id)))\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\tlog.Warn(message, fields...)\n")
+		fmt.Fprintf(destination, "}\n\n")
+
+		fmt.Fprintf(destination, "// Error logs with ECS fields: @timestamp, log.level, message, error.message, trace.id, service.name\n")
 		fmt.Fprintf(destination, "func Error(message interface{}, ctx context.Context, fields ...zap.Field) {\n")
-		fmt.Fprintf(destination, "\trequestId := ctx.Value(\"requestid\")\n")
-		fmt.Fprintf(destination, "\tif requestId != nil {\n")
-		fmt.Fprintf(destination, "\t\tfields = append(fields, zap.String(\"request_id\", requestId.(string)))\n")
-		fmt.Fprintf(destination, "\t}\n\n")
+		fmt.Fprintf(destination, "\tif id := ctx.Value(\"requestid\"); id != nil {\n")
+		fmt.Fprintf(destination, "\t\tfields = append(fields, zap.String(\"trace.id\", fmt.Sprint(id)))\n")
+		fmt.Fprintf(destination, "\t}\n")
 		fmt.Fprintf(destination, "\tswitch v := message.(type) {\n")
 		fmt.Fprintf(destination, "\tcase error:\n")
+		fmt.Fprintf(destination, "\t\tfields = append(fields, zap.String(\"error.message\", v.Error()))\n")
 		fmt.Fprintf(destination, "\t\tlog.Error(v.Error(), fields...)\n")
 		fmt.Fprintf(destination, "\tcase string:\n")
 		fmt.Fprintf(destination, "\t\tlog.Error(v, fields...)\n")
+		fmt.Fprintf(destination, "\tdefault:\n")
+		fmt.Fprintf(destination, "\t\tlog.Error(fmt.Sprint(v), fields...)\n")
 		fmt.Fprintf(destination, "\t}\n")
 		fmt.Fprintf(destination, "}\n\n")
 
+		fmt.Fprintf(destination, "// Debug logs with ECS fields\n")
 		fmt.Fprintf(destination, "func Debug(message string, fields ...zap.Field) {\n")
 		fmt.Fprintf(destination, "\tlog.Debug(message, fields...)\n")
 		fmt.Fprintf(destination, "}\n")
@@ -646,8 +763,9 @@ func CreatePagination(projectName string) {
 		fmt.Fprintf(destination, "}\n\n")
 
 		fmt.Fprintf(destination, "// PaginatedResponse is the full API response for paginated data\n")
+		fmt.Fprintf(destination, "// Format: { success, message, pagination: { total_items, items_per_page, current_page, total_pages, next_page, previous_page }, data, errors: null }\n")
 		fmt.Fprintf(destination, "type PaginatedResponse struct {\n")
-		fmt.Fprintf(destination, "\tSucces     bool        `json:\"success\"`\n")
+		fmt.Fprintf(destination, "\tSuccess    bool        `json:\"success\"`\n")
 		fmt.Fprintf(destination, "\tMessage    string      `json:\"message\"`\n")
 		fmt.Fprintf(destination, "\tPagination Pagination  `json:\"pagination\"`\n")
 		fmt.Fprintf(destination, "\tData       interface{} `json:\"data\"`\n")
@@ -696,7 +814,7 @@ func CreatePagination(projectName string) {
 		fmt.Fprintf(destination, "\t}\n\n")
 
 		fmt.Fprintf(destination, "\tresponse := &PaginatedResponse{\n")
-		fmt.Fprintf(destination, "\t\tSucces:  true,\n")
+		fmt.Fprintf(destination, "\t\tSuccess: true,\n")
 		fmt.Fprintf(destination, "\t\tMessage: \"Data retrieved successfully\",\n")
 		fmt.Fprintf(destination, "\t\tPagination: Pagination{\n")
 		fmt.Fprintf(destination, "\t\t\tTotalItems:   int(total),\n")
@@ -742,8 +860,13 @@ func CreateRoutes() {
 
 		fmt.Fprintf(destination, "package routes\n\n")
 		fmt.Fprintf(destination, "import \"github.com/gofiber/fiber/v2\"\n\n")
+		fmt.Fprintf(destination, "// Routes defines the interface for route installation.\n")
 		fmt.Fprintf(destination, "type Routes interface {\n")
-		fmt.Fprintf(destination, "	Install(app *fiber.App)\n")
+		fmt.Fprintf(destination, "\tInstall(app *fiber.App)\n")
+		fmt.Fprintf(destination, "}\n\n")
+		fmt.Fprintf(destination, "// RouteRegistrar defines the interface for controllers that register routes.\n")
+		fmt.Fprintf(destination, "type RouteRegistrar interface {\n")
+		fmt.Fprintf(destination, "\tRegisterRoutes(router fiber.Router)\n")
 		fmt.Fprintf(destination, "}\n")
 
 		fmt.Println("Created Routes successfully:", file)
@@ -776,25 +899,38 @@ func CreateFiberRoutes(projectName string) {
 
 		fmt.Fprintf(destination, "package routes\n\n")
 		fmt.Fprintf(destination, "import (\n")
-		fmt.Fprintf(destination, " 	\"%s/%scontrollers\"\n", projectName, WORKDIR)
-		fmt.Fprintf(destination, "	\"github.com/gofiber/fiber/v2\"\n")
+		fmt.Fprintf(destination, "\t\"%s/internal/controllers\"\n", projectName)
+		fmt.Fprintf(destination, "\t\"github.com/gofiber/fiber/v2\"\n")
 		fmt.Fprintf(destination, ")\n\n")
-		fmt.Fprintf(destination, "type fiberRoutes struct {\n")
-		fmt.Fprintf(destination, " 	controller controllers.ExampleController\n")
+
+		fmt.Fprintf(destination, "// FiberRoutes manages route registration.\n")
+		fmt.Fprintf(destination, "type FiberRoutes struct {\n")
+		fmt.Fprintf(destination, "\texampleController *controllers.ExampleController\n")
 		fmt.Fprintf(destination, "}\n\n")
-		fmt.Fprintf(destination, "func (r fiberRoutes) Install(app *fiber.App) {\n")
-		fmt.Fprintf(destination, "	route := app.Group(\"api/\", func(ctx *fiber.Ctx) error {\n")
-		fmt.Fprintf(destination, "		return ctx.Next()\n")
-		fmt.Fprintf(destination, "	})\n")
-		fmt.Fprintf(destination, "	route.Get(\"ping\", r.controller.PingController)\n")
+
+		fmt.Fprintf(destination, "// NewFiberRoutes creates a new FiberRoutes instance.\n")
+		fmt.Fprintf(destination, "func NewFiberRoutes(exampleController *controllers.ExampleController) *FiberRoutes {\n")
+		fmt.Fprintf(destination, "\treturn &FiberRoutes{\n")
+		fmt.Fprintf(destination, "\t\texampleController: exampleController,\n")
+		fmt.Fprintf(destination, "\t}\n")
 		fmt.Fprintf(destination, "}\n\n")
-		fmt.Fprintf(destination, " func NewFiberRoutes(\n")
-		fmt.Fprintf(destination, " 	controller controllers.ExampleController,\n")
-		fmt.Fprintf(destination, " ) Routes {\n")
-		fmt.Fprintf(destination, " 	return &fiberRoutes{\n")
-		fmt.Fprintf(destination, " 		controller: controller,\n")
-		fmt.Fprintf(destination, " 	}\n")
-		fmt.Fprintf(destination, " }\n")
+
+		fmt.Fprintf(destination, "// Install registers all routes with API versioning.\n")
+		fmt.Fprintf(destination, "func (r *FiberRoutes) Install(app *fiber.App) {\n")
+		fmt.Fprintf(destination, "\t// Health check endpoint\n")
+		fmt.Fprintf(destination, "\tapp.Get(\"/health\", func(ctx *fiber.Ctx) error {\n")
+		fmt.Fprintf(destination, "\t\treturn ctx.JSON(fiber.Map{\"status\": \"healthy\"})\n")
+		fmt.Fprintf(destination, "\t})\n\n")
+
+		fmt.Fprintf(destination, "\t// API v1 routes with versioning\n")
+		fmt.Fprintf(destination, "\tv1 := app.Group(\"/api/v1\")\n\n")
+
+		fmt.Fprintf(destination, "\t// Register module routes\n")
+		fmt.Fprintf(destination, "\tr.exampleController.RegisterRoutes(v1)\n\n")
+
+		fmt.Fprintf(destination, "\t// TODO: Add more module routes here\n")
+		fmt.Fprintf(destination, "\t// r.userController.RegisterRoutes(v1)\n")
+		fmt.Fprintf(destination, "}\n")
 
 		fmt.Println("Created fiber_routes.go successfully:", file)
 	} else {
@@ -824,7 +960,7 @@ func GenerateModules(filename string) {
 func CreateRequests(filename string) {
 	pathFolder := WORKDIR + "requests"
 	if _, err := os.Stat(pathFolder); errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir(pathFolder, os.ModePerm)
+		err := os.MkdirAll(pathFolder, os.ModePerm)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -835,17 +971,27 @@ func CreateRequests(filename string) {
 	var _, err = os.Stat(file)
 
 	if os.IsNotExist(err) {
-
 		destination, err := os.Create(file)
-
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 		defer destination.Close()
-		fmt.Fprintf(destination, "package requests")
-		//fmt.Fprintf(destination, " %s\n", filename)
 
+		upper := strings.Replace(
+			cases.Title(language.Und, cases.NoLower).String(strings.ReplaceAll(filename, "_", " ")),
+			" ", "", -1,
+		)
+
+		fmt.Fprintf(destination, "package requests\n\n")
+		fmt.Fprintf(destination, "// Create%sRequest represents the request body for creating a %s.\n", upper, filename)
+		fmt.Fprintf(destination, "type Create%sRequest struct {\n", upper)
+		fmt.Fprintf(destination, "\tName string `json:\"name\" validate:\"required,min=1,max=255\"`\n")
+		fmt.Fprintf(destination, "}\n\n")
+		fmt.Fprintf(destination, "// Update%sRequest represents the request body for updating a %s.\n", upper, filename)
+		fmt.Fprintf(destination, "type Update%sRequest struct {\n", upper)
+		fmt.Fprintf(destination, "\tName string `json:\"name\" validate:\"required,min=1,max=255\"`\n")
+		fmt.Fprintf(destination, "}\n")
 	} else {
 		fmt.Println("File already exists!", file)
 		return
@@ -857,7 +1003,7 @@ func CreateRequests(filename string) {
 func CreateResponses(filename string) {
 	pathFolder := WORKDIR + "responses"
 	if _, err := os.Stat(pathFolder); errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir(pathFolder, os.ModePerm)
+		err := os.MkdirAll(pathFolder, os.ModePerm)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -867,16 +1013,27 @@ func CreateResponses(filename string) {
 	var _, err = os.Stat(file)
 
 	if os.IsNotExist(err) {
-
 		destination, err := os.Create(file)
-
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 		defer destination.Close()
-		fmt.Fprintf(destination, "package responses")
 
+		upper := strings.Replace(
+			cases.Title(language.Und, cases.NoLower).String(strings.ReplaceAll(filename, "_", " ")),
+			" ", "", -1,
+		)
+
+		fmt.Fprintf(destination, "package responses\n\n")
+		fmt.Fprintf(destination, "import \"time\"\n\n")
+		fmt.Fprintf(destination, "// %sResponse represents the response body for %s.\n", upper, filename)
+		fmt.Fprintf(destination, "type %sResponse struct {\n", upper)
+		fmt.Fprintf(destination, "\tID        uint      `json:\"id\"`\n")
+		fmt.Fprintf(destination, "\tName      string    `json:\"name\"`\n")
+		fmt.Fprintf(destination, "\tCreatedAt time.Time `json:\"created_at\"`\n")
+		fmt.Fprintf(destination, "\tUpdatedAt time.Time `json:\"updated_at\"`\n")
+		fmt.Fprintf(destination, "}\n")
 	} else {
 		fmt.Println("File already exists!", file)
 		return
@@ -888,7 +1045,7 @@ func CreateResponses(filename string) {
 func CreateModels(filename string) {
 	pathFolder := WORKDIR + "models"
 	if _, err := os.Stat(pathFolder); errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir(pathFolder, os.ModePerm)
+		err := os.MkdirAll(pathFolder, os.ModePerm)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -907,15 +1064,23 @@ func CreateModels(filename string) {
 		defer destination.Close()
 		upperString := strings.Replace(cases.Title(language.Und, cases.NoLower).String(strings.Replace(filename, "_", " ", -1)), " ", "", -1)
 
-		fmt.Fprintf(destination, "package models")
-		fmt.Fprintf(destination, "\n\n")
-		fmt.Fprintf(destination, `import "gorm.io/gorm"`)
-		fmt.Fprintf(destination, "\n\n")
-		fmt.Fprintf(destination, `type %s struct {`, upperString)
-		fmt.Fprintf(destination, "\n")
-		fmt.Fprintf(destination, `gorm.Model`)
-		fmt.Fprintf(destination, "\n")
-		fmt.Fprintf(destination, "}")
+		fmt.Fprintf(destination, "package models\n\n")
+		fmt.Fprintf(destination, "import (\n")
+		fmt.Fprintf(destination, "\t\"time\"\n\n")
+		fmt.Fprintf(destination, "\t\"gorm.io/gorm\"\n")
+		fmt.Fprintf(destination, ")\n\n")
+		fmt.Fprintf(destination, "// %s represents the %s entity.\n", upperString, filename)
+		fmt.Fprintf(destination, "type %s struct {\n", upperString)
+		fmt.Fprintf(destination, "\tID        uint           `json:\"id\" gorm:\"primaryKey\"`\n")
+		fmt.Fprintf(destination, "\tName      string         `json:\"name\" gorm:\"size:255;not null\"`\n")
+		fmt.Fprintf(destination, "\tCreatedAt time.Time      `json:\"created_at\"`\n")
+		fmt.Fprintf(destination, "\tUpdatedAt time.Time      `json:\"updated_at\"`\n")
+		fmt.Fprintf(destination, "\tDeletedAt gorm.DeletedAt `json:\"deleted_at,omitempty\" gorm:\"index\"`\n")
+		fmt.Fprintf(destination, "}\n\n")
+		fmt.Fprintf(destination, "// TableName specifies the table name for %s model.\n", upperString)
+		fmt.Fprintf(destination, "func (%s) TableName() string {\n", upperString)
+		fmt.Fprintf(destination, "\treturn \"%ss\"\n", filename)
+		fmt.Fprintf(destination, "}\n")
 	} else {
 		fmt.Println("File already exists!", file)
 		return
@@ -950,23 +1115,69 @@ func CreateRepositories(filename string, projectName string) {
 		)
 		lower := strings.ToLower(string(upper[0])) + upper[1:]
 
-		fmt.Fprintf(destination, "package repositories")
-		fmt.Fprintf(destination, "\n\n")
-		fmt.Fprintf(destination, `import (`)
-		fmt.Fprintf(destination, "\n")
+		fmt.Fprintf(destination, "package repositories\n\n")
+		fmt.Fprintf(destination, "import (\n")
+		fmt.Fprintf(destination, "\t\"%s/internal/models\"\n\n", projectName)
 		fmt.Fprintf(destination, "\t\"gorm.io/gorm\"\n")
 		fmt.Fprintf(destination, ")\n\n")
 
+		// Interface with CRUD methods
+		fmt.Fprintf(destination, "// %sRepository defines the interface for %s data operations.\n", upper, filename)
 		fmt.Fprintf(destination, "type %sRepository interface {\n", upper)
-		fmt.Fprintf(destination, "\t// Insert your function interface\n")
+		fmt.Fprintf(destination, "\tFindAll() ([]models.%s, error)\n", upper)
+		fmt.Fprintf(destination, "\tFindByID(id uint) (*models.%s, error)\n", upper)
+		fmt.Fprintf(destination, "\tCreate(entity *models.%s) error\n", upper)
+		fmt.Fprintf(destination, "\tUpdate(entity *models.%s) error\n", upper)
+		fmt.Fprintf(destination, "\tDelete(id uint) error\n")
 		fmt.Fprintf(destination, "}\n\n")
 
+		// Struct
 		fmt.Fprintf(destination, "type %sRepository struct {\n", lower)
 		fmt.Fprintf(destination, "\tdb *gorm.DB\n")
 		fmt.Fprintf(destination, "}\n\n")
 
+		// Constructor
+		fmt.Fprintf(destination, "// New%sRepository creates a new %s repository instance.\n", upper, filename)
 		fmt.Fprintf(destination, "func New%sRepository(db *gorm.DB) %sRepository {\n", upper, upper)
 		fmt.Fprintf(destination, "\treturn &%sRepository{db: db}\n", lower)
+		fmt.Fprintf(destination, "}\n\n")
+
+		// FindAll
+		fmt.Fprintf(destination, "// FindAll retrieves all %s records.\n", filename)
+		fmt.Fprintf(destination, "func (r *%sRepository) FindAll() ([]models.%s, error) {\n", lower, upper)
+		fmt.Fprintf(destination, "\tvar entities []models.%s\n", upper)
+		fmt.Fprintf(destination, "\tif err := r.db.Find(&entities).Error; err != nil {\n")
+		fmt.Fprintf(destination, "\t\treturn nil, err\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\treturn entities, nil\n")
+		fmt.Fprintf(destination, "}\n\n")
+
+		// FindByID
+		fmt.Fprintf(destination, "// FindByID retrieves a %s by its ID.\n", filename)
+		fmt.Fprintf(destination, "func (r *%sRepository) FindByID(id uint) (*models.%s, error) {\n", lower, upper)
+		fmt.Fprintf(destination, "\tvar entity models.%s\n", upper)
+		fmt.Fprintf(destination, "\tif err := r.db.First(&entity, id).Error; err != nil {\n")
+		fmt.Fprintf(destination, "\t\treturn nil, err\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\treturn &entity, nil\n")
+		fmt.Fprintf(destination, "}\n\n")
+
+		// Create
+		fmt.Fprintf(destination, "// Create inserts a new %s record.\n", filename)
+		fmt.Fprintf(destination, "func (r *%sRepository) Create(entity *models.%s) error {\n", lower, upper)
+		fmt.Fprintf(destination, "\treturn r.db.Create(entity).Error\n")
+		fmt.Fprintf(destination, "}\n\n")
+
+		// Update
+		fmt.Fprintf(destination, "// Update modifies an existing %s record.\n", filename)
+		fmt.Fprintf(destination, "func (r *%sRepository) Update(entity *models.%s) error {\n", lower, upper)
+		fmt.Fprintf(destination, "\treturn r.db.Save(entity).Error\n")
+		fmt.Fprintf(destination, "}\n\n")
+
+		// Delete
+		fmt.Fprintf(destination, "// Delete removes a %s by its ID (soft delete).\n", filename)
+		fmt.Fprintf(destination, "func (r *%sRepository) Delete(id uint) error {\n", lower)
+		fmt.Fprintf(destination, "\treturn r.db.Delete(&models.%s{}, id).Error\n", upper)
 		fmt.Fprintf(destination, "}\n")
 
 		fmt.Println("Created Repository successfully", file)
@@ -978,7 +1189,7 @@ func CreateRepositories(filename string, projectName string) {
 func CreateServices(filename string, projectName string) {
 	pathFolder := WORKDIR + "services"
 	if _, err := os.Stat(pathFolder); errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir(pathFolder, os.ModePerm)
+		err := os.MkdirAll(pathFolder, os.ModePerm)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -995,46 +1206,100 @@ func CreateServices(filename string, projectName string) {
 			return
 		}
 		defer destination.Close()
-		upperString := strings.Replace(cases.Title(language.Und, cases.NoLower).String(strings.Replace(filename, "_", " ", -1)), " ", "", -1)
-		lowerString := strings.ToLower(string(upperString[0])) + string(upperString[1:len(upperString)])
+		upper := strings.Replace(cases.Title(language.Und, cases.NoLower).String(strings.Replace(filename, "_", " ", -1)), " ", "", -1)
+		lower := strings.ToLower(string(upper[0])) + string(upper[1:len(upper)])
 
-		fmt.Fprintf(destination, "package services")
-		fmt.Fprintf(destination, "\n\n")
-		fmt.Fprintf(destination, `import (`)
+		fmt.Fprintf(destination, "package services\n\n")
+		fmt.Fprintf(destination, "import (\n")
+		fmt.Fprintf(destination, "\t\"errors\"\n\n")
+		fmt.Fprintf(destination, "\t\"%s/errs\"\n", projectName)
+		fmt.Fprintf(destination, "\t\"%s/internal/models\"\n", projectName)
+		fmt.Fprintf(destination, "\t\"%s/internal/repositories\"\n", projectName)
+		fmt.Fprintf(destination, "\t\"%s/internal/requests\"\n\n", projectName)
+		fmt.Fprintf(destination, "\t\"gorm.io/gorm\"\n")
+		fmt.Fprintf(destination, ")\n\n")
 
-		fmt.Fprintf(destination, "\n")
-		fmt.Fprintf(destination, `"%s/%srepositories"`, projectName, WORKDIR)
-		fmt.Fprintf(destination, "\n")
-		fmt.Fprintf(destination, `)`)
+		// Interface with CRUD methods
+		fmt.Fprintf(destination, "// %sService defines the interface for %s business logic.\n", upper, filename)
+		fmt.Fprintf(destination, "type %sService interface {\n", upper)
+		fmt.Fprintf(destination, "\tList() ([]models.%s, error)\n", upper)
+		fmt.Fprintf(destination, "\tGet(id uint) (*models.%s, error)\n", upper)
+		fmt.Fprintf(destination, "\tCreate(req *requests.Create%sRequest) (*models.%s, error)\n", upper, upper)
+		fmt.Fprintf(destination, "\tUpdate(id uint, req *requests.Update%sRequest) (*models.%s, error)\n", upper, upper)
+		fmt.Fprintf(destination, "\tDelete(id uint) error\n")
+		fmt.Fprintf(destination, "}\n\n")
 
-		fmt.Fprintf(destination, "\n\n")
-		fmt.Fprintf(destination, `type %sService interface{`, upperString)
-		fmt.Fprintf(destination, "\n")
-		fmt.Fprintf(destination, `//Insert your function interface`)
-		fmt.Fprintf(destination, "\n")
-		fmt.Fprintf(destination, `}`)
-		fmt.Fprintf(destination, "\n\n")
-		fmt.Fprintf(destination, `type %sService struct {`, lowerString)
-		fmt.Fprintf(destination, "\n")
-		fmt.Fprintf(destination, `repository%s repositories.%sRepository`, upperString, upperString)
-		fmt.Fprintf(destination, "\n")
-		fmt.Fprintf(destination, `}`)
+		// Struct
+		fmt.Fprintf(destination, "type %sService struct {\n", lower)
+		fmt.Fprintf(destination, "\trepo repositories.%sRepository\n", upper)
+		fmt.Fprintf(destination, "}\n\n")
 
-		fmt.Fprintf(destination, "\n\n")
-		fmt.Fprintf(destination, `func New%sService(`, upperString)
-		fmt.Fprintf(destination, "\n")
-		fmt.Fprintf(destination, `repository%s repositories.%sRepository,`, upperString, upperString)
-		fmt.Fprintf(destination, "\n")
-		fmt.Fprintf(destination, ") %sService {", upperString)
-		fmt.Fprintf(destination, "\n")
-		fmt.Fprintf(destination, `	return &%sService{`, lowerString)
-		fmt.Fprintf(destination, "\n")
-		fmt.Fprintf(destination, `repository%s :repository%s,`, upperString, upperString)
-		fmt.Fprintf(destination, "\n")
-		fmt.Fprintf(destination, `}`)
+		// Constructor
+		fmt.Fprintf(destination, "// New%sService creates a new %s service instance.\n", upper, filename)
+		fmt.Fprintf(destination, "func New%sService(repo repositories.%sRepository) %sService {\n", upper, upper, upper)
+		fmt.Fprintf(destination, "\treturn &%sService{repo: repo}\n", lower)
+		fmt.Fprintf(destination, "}\n\n")
 
-		fmt.Fprintf(destination, "\n")
-		fmt.Fprintf(destination, `}`)
+		// List
+		fmt.Fprintf(destination, "// List retrieves all %s records.\n", filename)
+		fmt.Fprintf(destination, "func (s *%sService) List() ([]models.%s, error) {\n", lower, upper)
+		fmt.Fprintf(destination, "\treturn s.repo.FindAll()\n")
+		fmt.Fprintf(destination, "}\n\n")
+
+		// Get
+		fmt.Fprintf(destination, "// Get retrieves a %s by ID.\n", filename)
+		fmt.Fprintf(destination, "func (s *%sService) Get(id uint) (*models.%s, error) {\n", lower, upper)
+		fmt.Fprintf(destination, "\tentity, err := s.repo.FindByID(id)\n")
+		fmt.Fprintf(destination, "\tif err != nil {\n")
+		fmt.Fprintf(destination, "\t\tif errors.Is(err, gorm.ErrRecordNotFound) {\n")
+		fmt.Fprintf(destination, "\t\t\treturn nil, errs.ErrorNotFound(\"%s not found\")\n", upper)
+		fmt.Fprintf(destination, "\t\t}\n")
+		fmt.Fprintf(destination, "\t\treturn nil, err\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\treturn entity, nil\n")
+		fmt.Fprintf(destination, "}\n\n")
+
+		// Create
+		fmt.Fprintf(destination, "// Create creates a new %s.\n", filename)
+		fmt.Fprintf(destination, "func (s *%sService) Create(req *requests.Create%sRequest) (*models.%s, error) {\n", lower, upper, upper)
+		fmt.Fprintf(destination, "\tentity := &models.%s{\n", upper)
+		fmt.Fprintf(destination, "\t\tName: req.Name,\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\tif err := s.repo.Create(entity); err != nil {\n")
+		fmt.Fprintf(destination, "\t\treturn nil, err\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\treturn entity, nil\n")
+		fmt.Fprintf(destination, "}\n\n")
+
+		// Update
+		fmt.Fprintf(destination, "// Update modifies an existing %s.\n", filename)
+		fmt.Fprintf(destination, "func (s *%sService) Update(id uint, req *requests.Update%sRequest) (*models.%s, error) {\n", lower, upper, upper)
+		fmt.Fprintf(destination, "\tentity, err := s.repo.FindByID(id)\n")
+		fmt.Fprintf(destination, "\tif err != nil {\n")
+		fmt.Fprintf(destination, "\t\tif errors.Is(err, gorm.ErrRecordNotFound) {\n")
+		fmt.Fprintf(destination, "\t\t\treturn nil, errs.ErrorNotFound(\"%s not found\")\n", upper)
+		fmt.Fprintf(destination, "\t\t}\n")
+		fmt.Fprintf(destination, "\t\treturn nil, err\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\tentity.Name = req.Name\n")
+		fmt.Fprintf(destination, "\tif err := s.repo.Update(entity); err != nil {\n")
+		fmt.Fprintf(destination, "\t\treturn nil, err\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\treturn entity, nil\n")
+		fmt.Fprintf(destination, "}\n\n")
+
+		// Delete
+		fmt.Fprintf(destination, "// Delete removes a %s by ID.\n", filename)
+		fmt.Fprintf(destination, "func (s *%sService) Delete(id uint) error {\n", lower)
+		fmt.Fprintf(destination, "\t_, err := s.repo.FindByID(id)\n")
+		fmt.Fprintf(destination, "\tif err != nil {\n")
+		fmt.Fprintf(destination, "\t\tif errors.Is(err, gorm.ErrRecordNotFound) {\n")
+		fmt.Fprintf(destination, "\t\t\treturn errs.ErrorNotFound(\"%s not found\")\n", upper)
+		fmt.Fprintf(destination, "\t\t}\n")
+		fmt.Fprintf(destination, "\t\treturn err\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\treturn s.repo.Delete(id)\n")
+		fmt.Fprintf(destination, "}\n")
 	} else {
 		fmt.Println("File already exists!", file)
 		return
@@ -1046,7 +1311,7 @@ func CreateServices(filename string, projectName string) {
 func CreateControllers(filename string, projectName string) {
 	pathFolder := WORKDIR + "controllers"
 	if _, err := os.Stat(pathFolder); errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir(pathFolder, os.ModePerm)
+		err := os.MkdirAll(pathFolder, os.ModePerm)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -1066,36 +1331,188 @@ func CreateControllers(filename string, projectName string) {
 			cases.Title(language.Und, cases.NoLower).String(strings.ReplaceAll(filename, "_", " ")),
 			" ", "", -1,
 		)
-		// lower := strings.ToLower(string(upper[0])) + upper[1:]
+		plural := toPlural(filename)
 
-		fmt.Fprintf(destination, "package controllers")
-		fmt.Fprintf(destination, "\n\n")
-		fmt.Fprintf(destination, `import (`)
-		fmt.Fprintf(destination, "\n")
-
-		fmt.Fprintf(destination, `"%s/%sservices"`, projectName, WORKDIR)
-		fmt.Fprintf(destination, "\n")
-		fmt.Fprintf(destination, `	"github.com/gofiber/fiber/v2"`)
+		fmt.Fprintf(destination, "package controllers\n\n")
+		fmt.Fprintf(destination, "import (\n")
+		fmt.Fprintf(destination, "\t\"strconv\"\n\n")
+		fmt.Fprintf(destination, "\t\"%s/internal/requests\"\n", projectName)
+		fmt.Fprintf(destination, "\t\"%s/internal/services\"\n", projectName)
+		fmt.Fprintf(destination, "\t\"%s/responses\"\n", projectName)
+		fmt.Fprintf(destination, "\t\"%s/validation\"\n\n", projectName)
+		fmt.Fprintf(destination, "\t\"github.com/gofiber/fiber/v2\"\n")
 		fmt.Fprintf(destination, ")\n\n")
 
+		// Struct
+		fmt.Fprintf(destination, "// %sController handles HTTP requests for %s resources.\n", upper, filename)
 		fmt.Fprintf(destination, "type %sController struct {\n", upper)
-		fmt.Fprintf(destination, "\tservice services.%sService\n", upper) // use the local service type without import
+		fmt.Fprintf(destination, "\tservice services.%sService\n", upper)
 		fmt.Fprintf(destination, "}\n\n")
 
-		fmt.Fprintf(destination, "func New%sController(service services.%sService) %sController {\n", upper, upper, upper)
-		fmt.Fprintf(destination, "\treturn %sController{service: service}\n", upper)
+		// Constructor
+		fmt.Fprintf(destination, "// New%sController creates a new %s controller instance.\n", upper, filename)
+		fmt.Fprintf(destination, "func New%sController(service services.%sService) *%sController {\n", upper, upper, upper)
+		fmt.Fprintf(destination, "\treturn &%sController{service: service}\n", upper)
 		fmt.Fprintf(destination, "}\n\n")
 
-		fmt.Fprintf(destination, "func (c *%sController) PingController(ctx *fiber.Ctx) error {\n", upper)
-		fmt.Fprintf(destination, "\treturn ctx.JSON(fiber.Map{\n")
-		fmt.Fprintf(destination, "\t\t\"message\": \"pong\",\n")
-		fmt.Fprintf(destination, "\t})\n")
+		// RegisterRoutes method for RESTful routing
+		fmt.Fprintf(destination, "// RegisterRoutes registers all %s routes.\n", filename)
+		fmt.Fprintf(destination, "func (c *%sController) RegisterRoutes(router fiber.Router) {\n", upper)
+		fmt.Fprintf(destination, "\tgroup := router.Group(\"/%s\")\n", plural)
+		fmt.Fprintf(destination, "\tgroup.Get(\"/\", c.List)       // GET /%s\n", plural)
+		fmt.Fprintf(destination, "\tgroup.Get(\"/:id\", c.Get)     // GET /%s/:id\n", plural)
+		fmt.Fprintf(destination, "\tgroup.Post(\"/\", c.Create)    // POST /%s\n", plural)
+		fmt.Fprintf(destination, "\tgroup.Put(\"/:id\", c.Update)  // PUT /%s/:id\n", plural)
+		fmt.Fprintf(destination, "\tgroup.Delete(\"/:id\", c.Delete) // DELETE /%s/:id\n", plural)
+		fmt.Fprintf(destination, "}\n\n")
+
+		// List - GET /resources
+		fmt.Fprintf(destination, "// List retrieves all %s.\n", plural)
+		fmt.Fprintf(destination, "// @Summary      List all %s\n", plural)
+		fmt.Fprintf(destination, "// @Description  Get a list of all %s\n", plural)
+		fmt.Fprintf(destination, "// @Tags         %s\n", plural)
+		fmt.Fprintf(destination, "// @Accept       json\n")
+		fmt.Fprintf(destination, "// @Produce      json\n")
+		fmt.Fprintf(destination, "// @Success      200  {object}  responses.APIResponse\n")
+		fmt.Fprintf(destination, "// @Router       /%s [get]\n", plural)
+		fmt.Fprintf(destination, "func (c *%sController) List(ctx *fiber.Ctx) error {\n", upper)
+		fmt.Fprintf(destination, "\tdata, err := c.service.List()\n")
+		fmt.Fprintf(destination, "\tif err != nil {\n")
+		fmt.Fprintf(destination, "\t\treturn responses.NewErrorResponse(ctx, err)\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\treturn responses.NewSuccessResponse(ctx, \"%s retrieved successfully\", data)\n", upper)
+		fmt.Fprintf(destination, "}\n\n")
+
+		// Get - GET /resources/:id
+		fmt.Fprintf(destination, "// Get retrieves a %s by ID.\n", filename)
+		fmt.Fprintf(destination, "// @Summary      Get a %s\n", filename)
+		fmt.Fprintf(destination, "// @Description  Get a %s by its ID\n", filename)
+		fmt.Fprintf(destination, "// @Tags         %s\n", plural)
+		fmt.Fprintf(destination, "// @Accept       json\n")
+		fmt.Fprintf(destination, "// @Produce      json\n")
+		fmt.Fprintf(destination, "// @Param        id   path      int  true  \"%s ID\"\n", upper)
+		fmt.Fprintf(destination, "// @Success      200  {object}  responses.APIResponse\n")
+		fmt.Fprintf(destination, "// @Failure      404  {object}  responses.ProblemDetail\n")
+		fmt.Fprintf(destination, "// @Router       /%s/{id} [get]\n", plural)
+		fmt.Fprintf(destination, "func (c *%sController) Get(ctx *fiber.Ctx) error {\n", upper)
+		fmt.Fprintf(destination, "\tid, err := strconv.ParseUint(ctx.Params(\"id\"), 10, 32)\n")
+		fmt.Fprintf(destination, "\tif err != nil {\n")
+		fmt.Fprintf(destination, "\t\treturn responses.NewErrorResponse(ctx, err)\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\tdata, err := c.service.Get(uint(id))\n")
+		fmt.Fprintf(destination, "\tif err != nil {\n")
+		fmt.Fprintf(destination, "\t\treturn responses.NewErrorResponse(ctx, err)\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\treturn responses.NewSuccessResponse(ctx, \"%s retrieved successfully\", data)\n", upper)
+		fmt.Fprintf(destination, "}\n\n")
+
+		// Create - POST /resources
+		fmt.Fprintf(destination, "// Create creates a new %s.\n", filename)
+		fmt.Fprintf(destination, "// @Summary      Create a %s\n", filename)
+		fmt.Fprintf(destination, "// @Description  Create a new %s\n", filename)
+		fmt.Fprintf(destination, "// @Tags         %s\n", plural)
+		fmt.Fprintf(destination, "// @Accept       json\n")
+		fmt.Fprintf(destination, "// @Produce      json\n")
+		fmt.Fprintf(destination, "// @Param        request  body      requests.Create%sRequest  true  \"Create %s Request\"\n", upper, upper)
+		fmt.Fprintf(destination, "// @Success      201      {object}  responses.APIResponse\n")
+		fmt.Fprintf(destination, "// @Failure      422      {object}  responses.ProblemDetail\n")
+		fmt.Fprintf(destination, "// @Router       /%s [post]\n", plural)
+		fmt.Fprintf(destination, "func (c *%sController) Create(ctx *fiber.Ctx) error {\n", upper)
+		fmt.Fprintf(destination, "\tvar req requests.Create%sRequest\n", upper)
+		fmt.Fprintf(destination, "\tif err := ctx.BodyParser(&req); err != nil {\n")
+		fmt.Fprintf(destination, "\t\treturn responses.NewErrorResponse(ctx, err)\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\tif errMsg, err := validation.ValidateStruct(req); err != nil {\n")
+		fmt.Fprintf(destination, "\t\treturn responses.NewValidationError(ctx, []responses.ValidationError{{Field: \"validation\", Message: errMsg}})\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\tdata, err := c.service.Create(&req)\n")
+		fmt.Fprintf(destination, "\tif err != nil {\n")
+		fmt.Fprintf(destination, "\t\treturn responses.NewErrorResponse(ctx, err)\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\treturn responses.NewCreatedResponse(ctx, \"%s created successfully\", data)\n", upper)
+		fmt.Fprintf(destination, "}\n\n")
+
+		// Update - PUT /resources/:id
+		fmt.Fprintf(destination, "// Update modifies an existing %s.\n", filename)
+		fmt.Fprintf(destination, "// @Summary      Update a %s\n", filename)
+		fmt.Fprintf(destination, "// @Description  Update an existing %s by ID\n", filename)
+		fmt.Fprintf(destination, "// @Tags         %s\n", plural)
+		fmt.Fprintf(destination, "// @Accept       json\n")
+		fmt.Fprintf(destination, "// @Produce      json\n")
+		fmt.Fprintf(destination, "// @Param        id       path      int                        true  \"%s ID\"\n", upper)
+		fmt.Fprintf(destination, "// @Param        request  body      requests.Update%sRequest  true  \"Update %s Request\"\n", upper, upper)
+		fmt.Fprintf(destination, "// @Success      200      {object}  responses.APIResponse\n")
+		fmt.Fprintf(destination, "// @Failure      404      {object}  responses.ProblemDetail\n")
+		fmt.Fprintf(destination, "// @Failure      422      {object}  responses.ProblemDetail\n")
+		fmt.Fprintf(destination, "// @Router       /%s/{id} [put]\n", plural)
+		fmt.Fprintf(destination, "func (c *%sController) Update(ctx *fiber.Ctx) error {\n", upper)
+		fmt.Fprintf(destination, "\tid, err := strconv.ParseUint(ctx.Params(\"id\"), 10, 32)\n")
+		fmt.Fprintf(destination, "\tif err != nil {\n")
+		fmt.Fprintf(destination, "\t\treturn responses.NewErrorResponse(ctx, err)\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\tvar req requests.Update%sRequest\n", upper)
+		fmt.Fprintf(destination, "\tif err := ctx.BodyParser(&req); err != nil {\n")
+		fmt.Fprintf(destination, "\t\treturn responses.NewErrorResponse(ctx, err)\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\tif errMsg, err := validation.ValidateStruct(req); err != nil {\n")
+		fmt.Fprintf(destination, "\t\treturn responses.NewValidationError(ctx, []responses.ValidationError{{Field: \"validation\", Message: errMsg}})\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\tdata, err := c.service.Update(uint(id), &req)\n")
+		fmt.Fprintf(destination, "\tif err != nil {\n")
+		fmt.Fprintf(destination, "\t\treturn responses.NewErrorResponse(ctx, err)\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\treturn responses.NewSuccessResponse(ctx, \"%s updated successfully\", data)\n", upper)
+		fmt.Fprintf(destination, "}\n\n")
+
+		// Delete - DELETE /resources/:id
+		fmt.Fprintf(destination, "// Delete removes a %s by ID.\n", filename)
+		fmt.Fprintf(destination, "// @Summary      Delete a %s\n", filename)
+		fmt.Fprintf(destination, "// @Description  Delete a %s by its ID\n", filename)
+		fmt.Fprintf(destination, "// @Tags         %s\n", plural)
+		fmt.Fprintf(destination, "// @Accept       json\n")
+		fmt.Fprintf(destination, "// @Produce      json\n")
+		fmt.Fprintf(destination, "// @Param        id   path      int  true  \"%s ID\"\n", upper)
+		fmt.Fprintf(destination, "// @Success      204\n")
+		fmt.Fprintf(destination, "// @Failure      404  {object}  responses.ProblemDetail\n")
+		fmt.Fprintf(destination, "// @Router       /%s/{id} [delete]\n", plural)
+		fmt.Fprintf(destination, "func (c *%sController) Delete(ctx *fiber.Ctx) error {\n", upper)
+		fmt.Fprintf(destination, "\tid, err := strconv.ParseUint(ctx.Params(\"id\"), 10, 32)\n")
+		fmt.Fprintf(destination, "\tif err != nil {\n")
+		fmt.Fprintf(destination, "\t\treturn responses.NewErrorResponse(ctx, err)\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\tif err := c.service.Delete(uint(id)); err != nil {\n")
+		fmt.Fprintf(destination, "\t\treturn responses.NewErrorResponse(ctx, err)\n")
+		fmt.Fprintf(destination, "\t}\n")
+		fmt.Fprintf(destination, "\treturn responses.NewNoContentResponse(ctx)\n")
 		fmt.Fprintf(destination, "}\n")
 
 		fmt.Println("Created Controller successfully", file)
 	} else {
 		fmt.Println("File already exists!", file)
 	}
+}
+
+// toPlural converts a singular word to plural (simple rules).
+func toPlural(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return s
+	}
+	// Words ending in s, x, ch, sh -> add "es"
+	if strings.HasSuffix(s, "s") || strings.HasSuffix(s, "x") ||
+		strings.HasSuffix(s, "ch") || strings.HasSuffix(s, "sh") {
+		return s + "es"
+	}
+	// Words ending in consonant + y -> replace y with "ies"
+	if len(s) > 1 && s[len(s)-1] == 'y' && !isVowel(s[len(s)-2]) {
+		return s[:len(s)-1] + "ies"
+	}
+	return s + "s"
+}
+
+// isVowel checks if a byte is a vowel.
+func isVowel(b byte) bool {
+	return b == 'a' || b == 'e' || b == 'i' || b == 'o' || b == 'u'
 }
 
 // getProjectName reads the project name from the go.mod file
@@ -1120,7 +1537,7 @@ func getProjectName() (string, error) {
 	return "", errors.New("could not determine module name")
 }
 
-func CreateExampleConfig() {
+func CreateExampleConfig(projectName string) {
 	pathFolder := "./"
 	if _, err := os.Stat(pathFolder); errors.Is(err, os.ErrNotExist) {
 		err := os.Mkdir(pathFolder, os.ModePerm)
@@ -1141,8 +1558,9 @@ func CreateExampleConfig() {
 		}
 		defer destination.Close()
 
-		// Write the logging package code to the file
+		// Write the example config
 		fmt.Fprintf(destination, "app:\n")
+		fmt.Fprintf(destination, "  name: \"%s\"  # ECS service.name for Elastic/Kibana\n", projectName)
 		fmt.Fprintf(destination, "  port: 8080\n")
 		fmt.Fprintf(destination, "\n")
 		fmt.Fprintf(destination, "secrete:\n")
@@ -1157,7 +1575,7 @@ func CreateExampleConfig() {
 		fmt.Fprintf(destination, "\n")
 		fmt.Fprintf(destination, "redis:\n")
 		fmt.Fprintf(destination, "  host: localhost\n")
-		fmt.Fprintf(destination, "  port: 6479\n")
+		fmt.Fprintf(destination, "  port: 6379\n")
 
 		fmt.Println("Created Example Config successfully", file)
 	} else {
