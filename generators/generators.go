@@ -119,7 +119,7 @@ func CreateMainGo(projectName string) {
 		fmt.Fprintf(destination, "\t})\n")
 		fmt.Fprintf(destination, "\tserviceName := config.GetEnv(\"app.name\", \"%s\")\n", projectName)
 		fmt.Fprintf(destination, "\tapp.Use(logger.New(logger.Config{\n")
-		fmt.Fprintf(destination, "\t\tFormat:     \"{\\\"@timestamp\\\":\\\"${time}\\\",\\\"log.level\\\":\\\"info\\\",\\\"message\\\":\\\"http request\\\",\\\"http.request.method\\\":\\\"${method}\\\",\\\"http.response.status_code\\\":${status},\\\"event.duration\\\":\\\"${latency}\\\",\\\"client.ip\\\":\\\"${ip}\\\",\\\"url.path\\\":\\\"${path}\\\",\\\"trace.id\\\":\\\"${locals:requestid}\\\",\\\"service.name\\\":\\\"\" + serviceName + \"\\\"}\\\n\",\n")
+		fmt.Fprintf(destination, "\t\tFormat:     \"{\\\"@timestamp\\\":\\\"${time}\\\",\\\"log.level\\\":\\\"info\\\",\\\"message\\\":\\\"http request\\\",\\\"http.request.method\\\":\\\"${method}\\\",\\\"http.response.status_code\\\":${status},\\\"event.duration\\\":\\\"${latency}\\\",\\\"client.ip\\\":\\\"${ip}\\\",\\\"url.path\\\":\\\"${path}\\\",\\\"trace.id\\\":\\\"${locals:requestid}\\\",\\\"service.name\\\":\\\"\" + serviceName + \"\\\"}\",\n")
 		fmt.Fprintf(destination, "\t\tTimeFormat: \"2006-01-02T15:04:05.000Z07:00\",\n")
 		fmt.Fprintf(destination, "\t\tTimeZone:   \"UTC\",\n")
 		fmt.Fprintf(destination, "\t}))\n")
