@@ -1,6 +1,10 @@
 # Go Generator
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/BounkhongDev/go-generator.svg)](https://pkg.go.dev/github.com/BounkhongDev/go-generator)
+
 A simple and opinionated project generator for Go (Golang), designed to help you quickly scaffold RESTful APIs with a clean layered architecture (controllers, services, repositories).
+
+**Documentation:** [pkg.go.dev/github.com/BounkhongDev/go-generator](https://pkg.go.dev/github.com/BounkhongDev/go-generator) · [Library (pkg/generator)](https://pkg.go.dev/github.com/BounkhongDev/go-generator/pkg/generator)
 
 ---
 
@@ -12,6 +16,28 @@ A simple and opinionated project generator for Go (Golang), designed to help you
 - ECS-formatted JSON logs for Elasticsearch and Kibana
 - Supports `macOS`, `Linux`, and `Windows`
 - Automatically adds the generator to your system path
+
+---
+
+## 🧪 Testing
+
+Run tests and coverage locally:
+
+```bash
+go test ./...
+go test -cover ./...
+```
+
+With coverage profile and report:
+
+```bash
+make test      # run tests
+make cover     # tests with coverage summary
+make cover-profile   # coverage profile + func report
+make cover-html      # generate coverage.html (open in browser)
+```
+
+CI runs tests and coverage on push/PR to `main` or `master` (see [.github/workflows/test.yml](.github/workflows/test.yml)).
 
 ---
 
@@ -37,7 +63,13 @@ cd go-generator
 ### Build the Binary
 
 ```bash
-go build -o go-gen-r ./cmd/generate
+go build -o go-gen-r ./cmd/go-gen-r
+```
+
+Or install directly (when the module is available):
+
+```bash
+go install github.com/BounkhongDev/go-generator/cmd/go-gen-r@latest
 ```
 
 ### For macOS or Linux
@@ -118,6 +150,31 @@ This will generate:
 - Test stubs and migrations
 
 **Important:** You must manually register new modules in `main.go` and `routes/fiber_routes.go` if you add modules after the initial `init`.
+
+---
+
+### 📚 Use as a library
+
+You can use the generator programmatically from your own Go code:
+
+```go
+import "github.com/BounkhongDev/go-generator/pkg/generator"
+
+func main() {
+    // Initialize a new project (run from the project directory)
+    if err := generator.Init("my-api"); err != nil {
+        log.Fatal(err)
+    }
+
+    // Generate a new module (run from an existing project root)
+    if err := generator.GenerateModule("user"); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+- `generator.Init(projectName)` runs `go mod init`, installs dependencies, and creates the full project structure including an example module.
+- `generator.GenerateModule(moduleName)` creates a new module (model, repository, service, controller, etc.); the project name is read from `go.mod` in the current directory.
 
 ---
 

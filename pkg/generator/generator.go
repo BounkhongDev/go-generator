@@ -1,10 +1,15 @@
-package generators
+// Package generator provides programmatic scaffolding for Go REST APIs with a
+// layered architecture (controllers, services, repositories). It can be used
+// as a library (e.g. generator.Init, generator.GenerateModule) or via the
+// go-gen-r CLI.
+package generator
 
 import (
 	"bufio"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"sort"
 	"strings"
 
@@ -16,12 +21,64 @@ var (
 	WORKDIR = "internal/"
 )
 
-func GenerateInitialStructure() {
-	projectName, err := getProjectName()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+// runCmd runs a command and returns an error on failure.
+func runCmd(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	if errors.Is(cmd.Err, exec.ErrDot) {
+		cmd.Err = nil
 	}
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("command %s %s failed: %w", name, strings.Join(args, " "), err)
+	}
+	return nil
+}
+
+// initPackages runs go get for the default dependencies.
+func initPackages() error {
+	packages := []string{
+		"github.com/gofiber/fiber/v2",
+		"gorm.io/gorm",
+		"github.com/go-playground/validator/v10",
+		"go.uber.org/zap",
+		"github.com/spf13/viper",
+		"gorm.io/driver/postgres",
+	}
+	for _, pkg := range packages {
+		if err := runCmd("go", "get", pkg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Init initializes a new Go project with the given project name (module name).
+// It runs go mod init, go mod tidy, installs dependencies, and generates the
+// full project structure including an example module. Call this from the
+// directory that will become the project root.
+func Init(projectName string) error {
+	projectName = strings.TrimSpace(projectName)
+	if projectName == "" {
+		return errors.New("project name must not be empty")
+	}
+	if strings.Contains(projectName, " ") {
+		return errors.New("project name must not contain spaces")
+	}
+	if err := runCmd("go", "mod", "init", projectName); err != nil {
+		return err
+	}
+	if err := runCmd("go", "mod", "tidy"); err != nil {
+		return err
+	}
+	if err := initPackages(); err != nil {
+		return err
+	}
+	return GenerateInitialStructure(projectName)
+}
+
+// GenerateInitialStructure creates the full project layout (config, database,
+// routes, middleware, etc.) and an example module. projectName is the Go
+// module name (e.g. from go mod init).
+func GenerateInitialStructure(projectName string) error {
 	CreateConfigEnv(projectName)
 	CreateConfigTimezonse(projectName)
 	CreateDatabaseConnection(projectName)
@@ -35,8 +92,11 @@ func GenerateInitialStructure() {
 	CreateMainGo(projectName)
 	CreateSrcDir()
 	CreateExampleConfig(projectName)
-	GenerateModules("example")
+	if err := GenerateModule("example"); err != nil {
+		return err
+	}
 	CreateMiddleware(projectName)
+	return nil
 }
 
 func CreateMainGo(projectName string) {
@@ -938,23 +998,26 @@ func CreateFiberRoutes(projectName string) {
 	}
 }
 
-func GenerateModules(filename string) {
-	filename = strings.ToLower(filename)
+// GenerateModule generates a new module (model, repository, service, controller,
+// requests, responses, tests, migrations) for the given module name. The project
+// name is read from go.mod in the current directory. Call this from the project root.
+func GenerateModule(moduleName string) error {
+	moduleName = strings.ToLower(moduleName)
 
 	projectName, err := getProjectName()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return fmt.Errorf("could not determine project name: %w", err)
 	}
 
-	CreateRequests(filename)
-	CreateResponses(filename)
-	CreateModels(filename)
-	CreateRepositories(filename, projectName)
-	CreateServices(filename, projectName)
-	CreateControllers(filename, projectName)
-	CreateTestsStructure(filename, projectName)
-	CreateMigrations(filename, projectName)
+	CreateRequests(moduleName)
+	CreateResponses(moduleName)
+	CreateModels(moduleName)
+	CreateRepositories(moduleName, projectName)
+	CreateServices(moduleName, projectName)
+	CreateControllers(moduleName, projectName)
+	CreateTestsStructure(moduleName, projectName)
+	CreateMigrations(moduleName, projectName)
+	return nil
 }
 
 func CreateRequests(filename string) {

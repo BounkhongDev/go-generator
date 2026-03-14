@@ -1,0 +1,10 @@
+# Binary
+go-gen-r
+
+# Coverage
+coverage.out
+coverage.html
+
+# Go
+*.exe
+*.test
