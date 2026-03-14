@@ -1,5 +1,5 @@
-# Binary
-go-gen-r
+# Binary (root only; do not ignore cmd/go-gen-r/)
+/go-gen-r
 
 # Coverage
 coverage.out
