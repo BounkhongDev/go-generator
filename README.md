@@ -53,49 +53,68 @@ CI runs tests and coverage on push/PR to `main` or `master` (see [.github/workfl
 
 ## 🚀 Installation
 
-### Clone the Repository
+### All platforms (recommended)
 
-```bash
-git clone git@github.com:BounkhongDev/go-generator.git
-cd go-generator
-```
-
-### Build the Binary
-
-```bash
-go build -o go-gen-r ./cmd/go-gen-r
-```
-
-Or install directly (when the module is available):
+If you have Go installed, the same steps work on **Windows, macOS, and Linux**:
 
 ```bash
 go install github.com/BounkhongDev/go-generator/cmd/go-gen-r@latest
 ```
 
-### For macOS or Linux
+Ensure the Go bin directory is in your `PATH`:
 
-Run the installation script to install globally:
+- **macOS / Linux:** `$HOME/go/bin` (or `$GOPATH/bin` if set). Add to `PATH` in `~/.bashrc`, `~/.zshrc`, or `~/.profile` if needed.
+- **Windows:** `%USERPROFILE%\go\bin` (e.g. `C:\Users\YourName\go\bin`). Add it to your user PATH in System Properties → Environment Variables → Path.
+
+Then run from any terminal:
 
 ```bash
-./install.sh
+go-gen-r init
 ```
 
-This will move the binary to `/usr/local/bin` and make `go-gen-r` available globally.
+---
 
-### For Windows
+### Build from source
 
-To add the directory to your system's `PATH` manually:
+**1. Clone the repository**
 
-1. Copy the `go-generator` folder to your Local Disk (`C:`)
-2. Right-click on `This PC` or `Computer` on your desktop or in File Explorer
-3. Select `Properties`
-4. Click on `Advanced system settings`
-5. Click the `Environment Variables` button
-6. In the **System variables** section, find the `Path` variable and select it
-7. Click `Edit`, then `New`, and add the path: `C:\go-generator`
-8. Click `OK` to save and close all windows
+```bash
+git clone https://github.com/BounkhongDev/go-generator.git
+cd go-generator
+```
 
-Now, you can use `go-gen-r` from any terminal window.
+**2. Build the binary**
+
+- **macOS / Linux:**
+  ```bash
+  go build -o go-gen-r ./cmd/go-gen-r
+  ```
+  Binary: `go-gen-r`
+
+- **Windows (Command Prompt or PowerShell):**
+  ```cmd
+  go build -o go-gen-r.exe ./cmd/go-gen-r
+  ```
+  Binary: `go-gen-r.exe`
+
+**3. Install / add to PATH**
+
+| OS        | Method |
+|-----------|--------|
+| **macOS / Linux** | Run `./install.sh` to copy the binary to `/usr/local/bin` (requires write access). Or copy `go-gen-r` to a directory already in your `PATH`. |
+| **Windows**       | In PowerShell (from the repo folder): `.\install.ps1`. If you get an execution policy error, run `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned` once, then run `.\install.ps1` again. Or manually add the folder containing `go-gen-r.exe` to your [Environment Variables → Path](https://learn.microsoft.com/en-us/windows/win32/procthread/environment-variables). |
+
+### Windows: manual PATH setup
+
+If you built the binary and did not use `install.ps1`:
+
+1. Note the folder that contains `go-gen-r.exe` (e.g. `C:\go-generator`).
+2. Open **Settings** → **System** → **About** → **Advanced system settings** (or search "environment variables").
+3. Click **Environment Variables**. Under **User variables**, select **Path** → **Edit** → **New**.
+4. Add the folder path (e.g. `C:\go-generator`). Confirm with **OK**.
+5. Open a **new** terminal; run `go-gen-r`.
+
+Now you can use `go-gen-r` from any terminal on all supported OSes.
 
 ---
 
