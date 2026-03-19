@@ -439,8 +439,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Donate
 
-If this project helps you, you can support it via Lightning:
+If this project helps you, you can support it via Lightning or BCEL One:
+
+**Lightning**
 
 - Wallet: `spoiledhate85@walletofsatoshi.com`
 
 <img src="assets/lightning-qr.jpg" alt="Lightning QR" width="200">
+
+**BCEL One**
+
+- Account: `050120001275407001`
+
+<img src="assets/bcel-qr.png" alt="BCEL QR" width="200">
