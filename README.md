@@ -443,4 +443,4 @@ If this project helps you, you can support it via Lightning:
 
 - Wallet: `spoiledhate85@walletofsatoshi.com`
 
-![Lightning QR](assets/lightning-qr.jpg)
+<img src="assets/lightning-qr.jpg" alt="Lightning QR" width="200">
