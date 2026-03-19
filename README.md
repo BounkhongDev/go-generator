@@ -441,14 +441,23 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 If this project helps you, you can support it via Lightning or BCEL One:
 
-**Lightning**
+<table>
+<tr>
+<td align="center">
 
-- Wallet: `spoiledhate85@walletofsatoshi.com`
+**Lightning**  
+Wallet: `spoiledhate85@walletofsatoshi.com`
 
-<img src="assets/lightning-qr.jpg" alt="Lightning QR" width="200">
+<img src="assets/lightning-qr.jpg" alt="Lightning QR" width="180">
 
-**BCEL One**
+</td>
+<td align="center">
 
-- Account: `050120001275407001`
+**BCEL One**  
+Account: `050120001275407001`
 
-<img src="assets/bcel-qr.png" alt="BCEL QR" width="200">
+<img src="assets/bcel-qr.png" alt="BCEL QR" width="180">
+
+</td>
+</tr>
+</table>
