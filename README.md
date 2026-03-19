@@ -434,3 +434,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 👤 Author
 
 **Bounkhong CHUANGTHEVY** – Backend Developer
+
+---
+
+## Donate
+
+If this project helps you, you can support it via Lightning:
+
+- Wallet: `spoiledhate85@walletofsatoshi.com`
+
+![Lightning QR](assets/lightning-qr.jpg)
