@@ -6,12 +6,19 @@ package generator
 
 import (
 	"bufio"
+	"bytes"
+	"embed"
 	"errors"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
+	"text/template"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -20,6 +27,9 @@ import (
 var (
 	WORKDIR = "internal/"
 )
+
+//go:embed templates
+var templatesFS embed.FS
 
 // runCmd runs a command and returns an error on failure.
 func runCmd(name string, args ...string) error {
@@ -42,6 +52,7 @@ func initPackages() error {
 		"go.uber.org/zap",
 		"github.com/spf13/viper",
 		"gorm.io/driver/postgres",
+		"github.com/stretchr/testify",
 	}
 	for _, pkg := range packages {
 		if err := runCmd("go", "get", pkg); err != nil {
@@ -1015,7 +1026,9 @@ func GenerateModule(moduleName string) error {
 	CreateRepositories(moduleName, projectName)
 	CreateServices(moduleName, projectName)
 	CreateControllers(moduleName, projectName)
-	CreateTestsStructure(moduleName, projectName)
+	if err := GenerateTestFiles(moduleName, projectName); err != nil {
+		return err
+	}
 	CreateMigrations(moduleName, projectName)
 	return nil
 }
@@ -1270,7 +1283,7 @@ func CreateServices(filename string, projectName string) {
 		}
 		defer destination.Close()
 		upper := strings.Replace(cases.Title(language.Und, cases.NoLower).String(strings.Replace(filename, "_", " ", -1)), " ", "", -1)
-		lower := strings.ToLower(string(upper[0])) + string(upper[1:len(upper)])
+		lower := strings.ToLower(string(upper[0])) + string(upper[1:])
 
 		fmt.Fprintf(destination, "package services\n\n")
 		fmt.Fprintf(destination, "import (\n")
@@ -1600,6 +1613,11 @@ func getProjectName() (string, error) {
 	return "", errors.New("could not determine module name")
 }
 
+// ResolveProjectName returns the module path from go.mod in current directory.
+func ResolveProjectName() (string, error) {
+	return getProjectName()
+}
+
 func CreateExampleConfig(projectName string) {
 	pathFolder := "./"
 	if _, err := os.Stat(pathFolder); errors.Is(err, os.ErrNotExist) {
@@ -1647,59 +1665,234 @@ func CreateExampleConfig(projectName string) {
 	}
 }
 
-func CreateTestsStructure(filename string, projectName string) {
-	testFolder := "tests/" + filename
-
-	if err := os.MkdirAll(testFolder, os.ModePerm); err != nil {
-		fmt.Println("Error creating test directory:", err)
-		return
-	}
-
-	upper := strings.Replace(
-		cases.Title(language.Und, cases.NoLower).String(strings.ReplaceAll(filename, "_", " ")),
-		" ", "", -1,
-	)
-	lower := strings.ToLower(upper) // Fixed the undefined error by initializing lower
-
-	createFile(testFolder+"/"+filename+"_service_test.go", fmt.Sprintf(`package %s
-
-	import (
-		"testing"
-		"github.com/stretchr/testify/assert"
-	)
-
-	func Test%sService(t *testing.T) {
-		// TODO: Write tests for %s service
-		assert.True(t, true)
-	}`, filename, upper, lower))
-
-	createFile(testFolder+"/"+filename+"_repository_mock.go", fmt.Sprintf(`package %s
-
-	import "github.com/stretchr/testify/mock"
-
-	type %sRepositoryMock struct {
-		mock.Mock
-	}
-
-	// TODO: Add mock implementations
-	`, filename, upper))
-
-	fmt.Println("Test structure created successfully at", testFolder)
+type moduleTemplateData struct {
+	ProjectName    string
+	ModuleName     string
+	ServiceName    string
+	RepositoryName string
+	ModelName      string
 }
 
-func createFile(path, content string) {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		file, err := os.Create(path)
-		if err != nil {
-			fmt.Println("Error creating file:", err)
-			return
-		}
-		defer file.Close()
-		file.WriteString(content)
-		fmt.Println("Created file:", path)
-	} else {
-		fmt.Println("File already exists:", path)
+type renderResult struct {
+	created bool
+}
+
+type autoServiceTemplateData struct {
+	ProjectName string
+	ModuleName  string
+	ModelName   string
+	HasList     bool
+	HasGet      bool
+	HasCreate   bool
+	HasUpdate   bool
+	HasDelete   bool
+}
+
+// GenerateTestFiles creates tests/services, tests/mocks, tests/fixtures and
+// renders module test files from template files.
+func GenerateTestFiles(moduleName, projectName string) error {
+	return generateTestFiles(moduleName, projectName, false)
+}
+
+func generateTestFiles(moduleName, projectName string, force bool) error {
+	moduleName = strings.ToLower(strings.TrimSpace(moduleName))
+	if moduleName == "" {
+		return errors.New("module name must not be empty")
 	}
+
+	testDirs := []string{
+		"tests/services",
+		"tests/mocks",
+		"tests/fixtures",
+	}
+	for _, dir := range testDirs {
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			return fmt.Errorf("failed to create test directory %s: %w", dir, err)
+		}
+	}
+
+	pascalModuleName := strings.Replace(
+		cases.Title(language.Und, cases.NoLower).String(strings.ReplaceAll(moduleName, "_", " ")),
+		" ",
+		"",
+		-1,
+	)
+	data := moduleTemplateData{
+		ProjectName:    projectName,
+		ModuleName:     moduleName,
+		ServiceName:    pascalModuleName + "Service",
+		RepositoryName: pascalModuleName + "Repository",
+		ModelName:      pascalModuleName,
+	}
+
+	outputFiles := []struct {
+		templatePath string
+		outputPath   string
+	}{
+		{
+			templatePath: "templates/service_test.tmpl",
+			outputPath:   filepath.Join("tests/services", moduleName+"_service_test.go"),
+		},
+		{
+			templatePath: "templates/mock_repository.tmpl",
+			outputPath:   filepath.Join("tests/mocks", moduleName+"_repository_mock.go"),
+		},
+		{
+			templatePath: "templates/fixture.tmpl",
+			outputPath:   filepath.Join("tests/fixtures", moduleName+"_fixture.go"),
+		},
+	}
+
+	createdCount := 0
+	for _, file := range outputFiles {
+		result, err := renderTemplateToFile(file.templatePath, file.outputPath, data, force)
+		if err != nil {
+			return err
+		}
+		if result.created {
+			createdCount++
+		}
+	}
+
+	skippedCount := len(outputFiles) - createdCount
+	if createdCount == 0 {
+		fmt.Printf("No test files created for module %s. All files already exist.\n", moduleName)
+		fmt.Printf("Use force mode to regenerate: go-gen-r test %s --force\n", moduleName)
+		return nil
+	}
+
+	if skippedCount > 0 {
+		fmt.Printf("Created %d test file(s) for module %s, skipped %d existing file(s).\n", createdCount, moduleName, skippedCount)
+		return nil
+	}
+
+	fmt.Printf("Created all test files successfully for module: %s\n", moduleName)
+	return nil
+}
+
+// GenerateTestFilesForce recreates test scaffolding files for a module.
+func GenerateTestFilesForce(moduleName, projectName string) error {
+	return generateTestFiles(moduleName, projectName, true)
+}
+
+// GenerateAutoServiceTests regenerates the module service test based on current
+// service methods. It also ensures mocks/fixtures exist.
+func GenerateAutoServiceTests(moduleName, projectName string, force bool) error {
+	moduleName = strings.ToLower(strings.TrimSpace(moduleName))
+	if moduleName == "" {
+		return errors.New("module name must not be empty")
+	}
+
+	// Ensure fixtures and mocks are present (service test can be regenerated).
+	if err := generateTestFiles(moduleName, projectName, force); err != nil {
+		return err
+	}
+
+	methods, err := detectServiceMethods(moduleName)
+	if err != nil {
+		return err
+	}
+
+	if len(methods) == 0 {
+		return fmt.Errorf("no service methods found in internal/services/%s_service.go", moduleName)
+	}
+
+	modelName := strings.Replace(
+		cases.Title(language.Und, cases.NoLower).String(strings.ReplaceAll(moduleName, "_", " ")),
+		" ",
+		"",
+		-1,
+	)
+
+	data := autoServiceTemplateData{
+		ProjectName: projectName,
+		ModuleName:  moduleName,
+		ModelName:   modelName,
+		HasList:     methods["List"],
+		HasGet:      methods["Get"],
+		HasCreate:   methods["Create"],
+		HasUpdate:   methods["Update"],
+		HasDelete:   methods["Delete"],
+	}
+
+	outputPath := filepath.Join("tests/services", moduleName+"_service_test.go")
+	if _, err := renderTemplateToFile("templates/auto_service_test.tmpl", outputPath, data, true); err != nil {
+		return err
+	}
+
+	fmt.Printf("Auto-generated service test successfully for module: %s\n", moduleName)
+	return nil
+}
+
+func detectServiceMethods(moduleName string) (map[string]bool, error) {
+	servicePath := filepath.Join("internal/services", moduleName+"_service.go")
+	fset := token.NewFileSet()
+	node, err := parser.ParseFile(fset, servicePath, nil, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse service file %s: %w", servicePath, err)
+	}
+
+	methods := map[string]bool{}
+	allowed := map[string]struct{}{
+		"List":   {},
+		"Get":    {},
+		"Create": {},
+		"Update": {},
+		"Delete": {},
+	}
+
+	for _, decl := range node.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok || fn.Recv == nil {
+			continue
+		}
+		if _, exists := allowed[fn.Name.Name]; exists {
+			methods[fn.Name.Name] = true
+		}
+	}
+
+	return methods, nil
+}
+
+// CreateTestsStructure keeps backwards compatibility and delegates to
+// GenerateTestFiles.
+func CreateTestsStructure(moduleName string, projectName string) {
+	if err := GenerateTestFiles(moduleName, projectName); err != nil {
+		fmt.Println("Error creating test structure:", err)
+	}
+}
+
+func renderTemplateToFile(templatePath, outputPath string, data interface{}, force bool) (renderResult, error) {
+	if _, err := os.Stat(outputPath); err == nil && !force {
+		fmt.Println("File already exists:", outputPath)
+		return renderResult{created: false}, nil
+	}
+
+	rawTemplate, err := templatesFS.ReadFile(templatePath)
+	if err != nil {
+		return renderResult{}, fmt.Errorf("failed to read template %s: %w", templatePath, err)
+	}
+
+	tmpl, err := template.New(filepath.Base(templatePath)).Parse(string(rawTemplate))
+	if err != nil {
+		return renderResult{}, fmt.Errorf("failed to parse template %s: %w", templatePath, err)
+	}
+
+	var buffer bytes.Buffer
+	if err := tmpl.Execute(&buffer, data); err != nil {
+		return renderResult{}, fmt.Errorf("failed to render template %s: %w", templatePath, err)
+	}
+
+	if err := os.WriteFile(outputPath, buffer.Bytes(), 0644); err != nil {
+		return renderResult{}, fmt.Errorf("failed to write file %s: %w", outputPath, err)
+	}
+
+	if force {
+		fmt.Println("Regenerated file:", outputPath)
+	} else {
+		fmt.Println("Created file:", outputPath)
+	}
+	return renderResult{created: true}, nil
 }
 
 func CreateMiddleware(projectName string) {

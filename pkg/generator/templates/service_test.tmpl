@@ -1,0 +1,75 @@
+package services_test
+
+import (
+	"errors"
+	"testing"
+
+	"{{.ProjectName}}/internal/requests"
+	"{{.ProjectName}}/internal/services"
+	"{{.ProjectName}}/tests/fixtures"
+	"{{.ProjectName}}/tests/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+)
+
+// How to extend this generated test:
+// 1) Add a new item in the "tests" table.
+// 2) Configure repository behavior in mockSetup.
+// 3) Run service method in Act, then assert output/error in Assert.
+// 4) Keep success + error cases for each business path.
+func Test{{.ServiceName}}_Create(t *testing.T) {
+	tests := []struct {
+		name        string
+		req         *requests.Create{{.ModelName}}Request
+		mockSetup   func(repo *mocks.{{.ModelName}}RepositoryMock)
+		assertError func(t *testing.T, err error)
+	}{
+		{
+			name: "success_create_{{.ModuleName}}",
+			req: &requests.Create{{.ModelName}}Request{
+				Name: fixtures.Valid{{.ModelName}}().Name,
+			},
+			mockSetup: func(repo *mocks.{{.ModelName}}RepositoryMock) {
+				repo.On("Create", mock.AnythingOfType("*models.{{.ModelName}}")).Return(nil).Once()
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name: "error_create_{{.ModuleName}}_from_repository",
+			req: &requests.Create{{.ModelName}}Request{
+				Name: fixtures.Valid{{.ModelName}}().Name,
+			},
+			mockSetup: func(repo *mocks.{{.ModelName}}RepositoryMock) {
+				repo.On("Create", mock.AnythingOfType("*models.{{.ModelName}}")).Return(errors.New("repository create failed")).Once()
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.Error(t, err)
+				assert.EqualError(t, err, "repository create failed")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			repo := new(mocks.{{.ModelName}}RepositoryMock)
+			tt.mockSetup(repo)
+			svc := services.New{{.ModelName}}Service(repo)
+
+			// Act
+			got, err := svc.Create(tt.req)
+
+			// Assert
+			tt.assertError(t, err)
+			if err == nil {
+				assert.NotNil(t, got)
+				assert.Equal(t, tt.req.Name, got.Name)
+			} else {
+				assert.Nil(t, got)
+			}
+			repo.AssertExpectations(t)
+		})
+	}
+}

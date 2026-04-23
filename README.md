@@ -166,9 +166,79 @@ This will generate:
 - `internal/repositories/<module>_repository.go`
 - `internal/services/<module>_service.go`
 - `internal/controllers/<module>_controller.go`
-- Test stubs and migrations
+- `tests/services/<module>_service_test.go`
+- `tests/mocks/<module>_repository_mock.go`
+- `tests/fixtures/<module>_fixture.go`
+- `migrations/migrations.go`
 
 **Important:** You must manually register new modules in `main.go` and `routes/fiber_routes.go` if you add modules after the initial `init`.
+
+---
+
+### 🧪 Generate Test Scaffolding Only
+
+Use this when you want to generate only test files for an existing module:
+
+```bash
+go-gen-r test user
+go-gen-r test users
+go-gen-r test users --force
+```
+
+This creates (if missing):
+
+- `tests/services/<module>_service_test.go`
+- `tests/mocks/<module>_repository_mock.go`
+- `tests/fixtures/<module>_fixture.go`
+
+Existing files are not overwritten by default.
+Use `--force` to regenerate existing test files.
+
+---
+
+### 🤖 Auto-Generate Service Tests from Logic
+
+Use this when service methods change and you want to regenerate service-unit test scaffolding based on the current methods in `internal/services/<module>_service.go`:
+
+```bash
+go-gen-r auto-test users
+go-gen-r auto-test users --force
+```
+
+This command:
+
+- Detects service methods (`List`, `Get`, `Create`, `Update`, `Delete`) from the service file
+- Regenerates `tests/services/<module>_service_test.go` with table-driven Arrange / Act / Assert tests
+- Ensures mocks and fixtures exist (and regenerates all with `--force`)
+
+### 🧭 How to Read and Extend Generated Tests
+
+Generated service tests are designed to be editable and easy to extend.
+
+1. **Table-driven structure**  
+   Each `Test...` function has a `tests := []struct{...}` table. Add your new scenario as a new row.
+
+2. **Arrange**  
+   Use `mockSetup` to define repository behavior with `testify/mock` (`On(...).Return(...).Once()`).
+
+3. **Act**  
+   Call the service method under test (`Create`, `Update`, `Delete`, etc.).
+
+4. **Assert**  
+   Validate result and error using `assert.NoError`, `assert.Error`, `assert.Equal`, and always keep `repo.AssertExpectations(t)`.
+
+5. **Always keep both paths**  
+   For each method, keep at least:
+   - one success case
+   - one repository/internal error case
+   - not-found case when your service maps `gorm.ErrRecordNotFound`
+
+6. **When service logic changes**  
+   Run:
+   ```bash
+   go-gen-r auto-test <module> --force
+   ```
+   Then add/adjust custom scenarios in the generated table.
 
 ---
 
@@ -189,11 +259,21 @@ func main() {
     if err := generator.GenerateModule("user"); err != nil {
         log.Fatal(err)
     }
+
+    // Generate test scaffolding only for an existing module
+    projectName, err := generator.ResolveProjectName()
+    if err != nil {
+        log.Fatal(err)
+    }
+    if err := generator.GenerateTestFiles("user", projectName); err != nil {
+        log.Fatal(err)
+    }
 }
 ```
 
 - `generator.Init(projectName)` runs `go mod init`, installs dependencies, and creates the full project structure including an example module.
 - `generator.GenerateModule(moduleName)` creates a new module (model, repository, service, controller, etc.); the project name is read from `go.mod` in the current directory.
+- `generator.GenerateTestFiles(moduleName, projectName)` creates only test scaffolding under `tests/services`, `tests/mocks`, and `tests/fixtures`.
 
 ---
 
