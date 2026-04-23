@@ -1,0 +1,9 @@
+package fixtures
+
+import "{{.ProjectName}}/internal/models"
+
+func Valid{{.ModelName}}() models.{{.ModelName}} {
+	return models.{{.ModelName}}{
+		Name: "valid {{.ModuleName}} name",
+	}
+}

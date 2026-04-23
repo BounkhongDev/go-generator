@@ -123,6 +123,9 @@ func TestGenerateModule(t *testing.T) {
 		"internal/repositories/coverage_repository.go",
 		"internal/services/coverage_service.go",
 		"internal/controllers/coverage_controller.go",
+		"tests/services/coverage_service_test.go",
+		"tests/mocks/coverage_repository_mock.go",
+		"tests/fixtures/coverage_fixture.go",
 		"migrations/migrations.go",
 	}
 	for _, rel := range wantFiles {

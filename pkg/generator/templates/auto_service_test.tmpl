@@ -1,0 +1,336 @@
+package services_test
+
+import (
+	"errors"
+	"testing"
+
+	"{{.ProjectName}}/internal/models"
+	"{{.ProjectName}}/internal/requests"
+	"{{.ProjectName}}/internal/services"
+	"{{.ProjectName}}/tests/fixtures"
+	"{{.ProjectName}}/tests/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"gorm.io/gorm"
+)
+
+// This file is generated from service methods.
+// How to add more tests:
+// 1) Add a new test case item in the table for the target method.
+// 2) Set expected repo calls in mockSetup and return values/errors.
+// 3) Assert both success and failure behavior.
+// 4) Re-run `go-gen-r auto-test <module> --force` after service changes.
+
+{{if .HasList}}
+func Test{{.ModelName}}Service_List(t *testing.T) {
+	tests := []struct {
+		name        string
+		mockSetup   func(repo *mocks.{{.ModelName}}RepositoryMock)
+		assertError func(t *testing.T, err error)
+	}{
+		{
+			name: "success_list_{{.ModuleName}}",
+			mockSetup: func(repo *mocks.{{.ModelName}}RepositoryMock) {
+				repo.On("FindAll").Return([]models.{{.ModelName}}{fixtures.Valid{{.ModelName}}()}, nil).Once()
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name: "error_list_{{.ModuleName}}_from_repository",
+			mockSetup: func(repo *mocks.{{.ModelName}}RepositoryMock) {
+				repo.On("FindAll").Return(nil, errors.New("repository find all failed")).Once()
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.Error(t, err)
+				assert.EqualError(t, err, "repository find all failed")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			repo := new(mocks.{{.ModelName}}RepositoryMock)
+			tt.mockSetup(repo)
+			svc := services.New{{.ModelName}}Service(repo)
+
+			// Act
+			got, err := svc.List()
+
+			// Assert
+			tt.assertError(t, err)
+			if err == nil {
+				assert.NotNil(t, got)
+			} else {
+				assert.Nil(t, got)
+			}
+			repo.AssertExpectations(t)
+		})
+	}
+}
+{{end}}
+
+{{if .HasGet}}
+func Test{{.ModelName}}Service_Get(t *testing.T) {
+	tests := []struct {
+		name        string
+		id          uint
+		mockSetup   func(repo *mocks.{{.ModelName}}RepositoryMock)
+		assertError func(t *testing.T, err error)
+	}{
+		{
+			name: "success_get_{{.ModuleName}}",
+			id:   1,
+			mockSetup: func(repo *mocks.{{.ModelName}}RepositoryMock) {
+				entity := fixtures.Valid{{.ModelName}}()
+				repo.On("FindByID", uint(1)).Return(&entity, nil).Once()
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name: "error_get_{{.ModuleName}}_not_found",
+			id:   1,
+			mockSetup: func(repo *mocks.{{.ModelName}}RepositoryMock) {
+				repo.On("FindByID", uint(1)).Return(nil, gorm.ErrRecordNotFound).Once()
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.Error(t, err)
+				assert.EqualError(t, err, "{{.ModelName}} not found")
+			},
+		},
+		{
+			name: "error_get_{{.ModuleName}}_from_repository",
+			id:   1,
+			mockSetup: func(repo *mocks.{{.ModelName}}RepositoryMock) {
+				repo.On("FindByID", uint(1)).Return(nil, errors.New("repository find by id failed")).Once()
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.Error(t, err)
+				assert.EqualError(t, err, "repository find by id failed")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			repo := new(mocks.{{.ModelName}}RepositoryMock)
+			tt.mockSetup(repo)
+			svc := services.New{{.ModelName}}Service(repo)
+
+			// Act
+			got, err := svc.Get(tt.id)
+
+			// Assert
+			tt.assertError(t, err)
+			if err == nil {
+				assert.NotNil(t, got)
+			} else {
+				assert.Nil(t, got)
+			}
+			repo.AssertExpectations(t)
+		})
+	}
+}
+{{end}}
+
+{{if .HasCreate}}
+func Test{{.ModelName}}Service_Create(t *testing.T) {
+	tests := []struct {
+		name        string
+		req         *requests.Create{{.ModelName}}Request
+		mockSetup   func(repo *mocks.{{.ModelName}}RepositoryMock)
+		assertError func(t *testing.T, err error)
+	}{
+		{
+			name: "success_create_{{.ModuleName}}",
+			req: &requests.Create{{.ModelName}}Request{
+				Name: fixtures.Valid{{.ModelName}}().Name,
+			},
+			mockSetup: func(repo *mocks.{{.ModelName}}RepositoryMock) {
+				repo.On("Create", mock.AnythingOfType("*models.{{.ModelName}}")).Return(nil).Once()
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name: "error_create_{{.ModuleName}}_from_repository",
+			req: &requests.Create{{.ModelName}}Request{
+				Name: fixtures.Valid{{.ModelName}}().Name,
+			},
+			mockSetup: func(repo *mocks.{{.ModelName}}RepositoryMock) {
+				repo.On("Create", mock.AnythingOfType("*models.{{.ModelName}}")).Return(errors.New("repository create failed")).Once()
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.Error(t, err)
+				assert.EqualError(t, err, "repository create failed")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			repo := new(mocks.{{.ModelName}}RepositoryMock)
+			tt.mockSetup(repo)
+			svc := services.New{{.ModelName}}Service(repo)
+
+			// Act
+			got, err := svc.Create(tt.req)
+
+			// Assert
+			tt.assertError(t, err)
+			if err == nil {
+				assert.NotNil(t, got)
+				assert.Equal(t, tt.req.Name, got.Name)
+			} else {
+				assert.Nil(t, got)
+			}
+			repo.AssertExpectations(t)
+		})
+	}
+}
+{{end}}
+
+{{if .HasUpdate}}
+func Test{{.ModelName}}Service_Update(t *testing.T) {
+	tests := []struct {
+		name        string
+		id          uint
+		req         *requests.Update{{.ModelName}}Request
+		mockSetup   func(repo *mocks.{{.ModelName}}RepositoryMock)
+		assertError func(t *testing.T, err error)
+	}{
+		{
+			name: "success_update_{{.ModuleName}}",
+			id:   1,
+			req: &requests.Update{{.ModelName}}Request{Name: "updated {{.ModuleName}}"},
+			mockSetup: func(repo *mocks.{{.ModelName}}RepositoryMock) {
+				entity := fixtures.Valid{{.ModelName}}()
+				repo.On("FindByID", uint(1)).Return(&entity, nil).Once()
+				repo.On("Update", mock.AnythingOfType("*models.{{.ModelName}}")).Return(nil).Once()
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name: "error_update_{{.ModuleName}}_not_found",
+			id:   1,
+			req: &requests.Update{{.ModelName}}Request{Name: "updated {{.ModuleName}}"},
+			mockSetup: func(repo *mocks.{{.ModelName}}RepositoryMock) {
+				repo.On("FindByID", uint(1)).Return(nil, gorm.ErrRecordNotFound).Once()
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.Error(t, err)
+				assert.EqualError(t, err, "{{.ModelName}} not found")
+			},
+		},
+		{
+			name: "error_update_{{.ModuleName}}_from_repository",
+			id:   1,
+			req: &requests.Update{{.ModelName}}Request{Name: "updated {{.ModuleName}}"},
+			mockSetup: func(repo *mocks.{{.ModelName}}RepositoryMock) {
+				entity := fixtures.Valid{{.ModelName}}()
+				repo.On("FindByID", uint(1)).Return(&entity, nil).Once()
+				repo.On("Update", mock.AnythingOfType("*models.{{.ModelName}}")).Return(errors.New("repository update failed")).Once()
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.Error(t, err)
+				assert.EqualError(t, err, "repository update failed")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			repo := new(mocks.{{.ModelName}}RepositoryMock)
+			tt.mockSetup(repo)
+			svc := services.New{{.ModelName}}Service(repo)
+
+			// Act
+			got, err := svc.Update(tt.id, tt.req)
+
+			// Assert
+			tt.assertError(t, err)
+			if err == nil {
+				assert.NotNil(t, got)
+				assert.Equal(t, tt.req.Name, got.Name)
+			} else {
+				assert.Nil(t, got)
+			}
+			repo.AssertExpectations(t)
+		})
+	}
+}
+{{end}}
+
+{{if .HasDelete}}
+func Test{{.ModelName}}Service_Delete(t *testing.T) {
+	tests := []struct {
+		name        string
+		id          uint
+		mockSetup   func(repo *mocks.{{.ModelName}}RepositoryMock)
+		assertError func(t *testing.T, err error)
+	}{
+		{
+			name: "success_delete_{{.ModuleName}}",
+			id:   1,
+			mockSetup: func(repo *mocks.{{.ModelName}}RepositoryMock) {
+				entity := fixtures.Valid{{.ModelName}}()
+				repo.On("FindByID", uint(1)).Return(&entity, nil).Once()
+				repo.On("Delete", uint(1)).Return(nil).Once()
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name: "error_delete_{{.ModuleName}}_not_found",
+			id:   1,
+			mockSetup: func(repo *mocks.{{.ModelName}}RepositoryMock) {
+				repo.On("FindByID", uint(1)).Return(nil, gorm.ErrRecordNotFound).Once()
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.Error(t, err)
+				assert.EqualError(t, err, "{{.ModelName}} not found")
+			},
+		},
+		{
+			name: "error_delete_{{.ModuleName}}_from_repository",
+			id:   1,
+			mockSetup: func(repo *mocks.{{.ModelName}}RepositoryMock) {
+				entity := fixtures.Valid{{.ModelName}}()
+				repo.On("FindByID", uint(1)).Return(&entity, nil).Once()
+				repo.On("Delete", uint(1)).Return(errors.New("repository delete failed")).Once()
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.Error(t, err)
+				assert.EqualError(t, err, "repository delete failed")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			repo := new(mocks.{{.ModelName}}RepositoryMock)
+			tt.mockSetup(repo)
+			svc := services.New{{.ModelName}}Service(repo)
+
+			// Act
+			err := svc.Delete(tt.id)
+
+			// Assert
+			tt.assertError(t, err)
+			repo.AssertExpectations(t)
+		})
+	}
+}
+{{end}}
